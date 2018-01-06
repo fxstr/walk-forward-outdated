@@ -1,0 +1,49 @@
+{
+  "name": "walk-forward",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node node_modules/ava/cli.js --watch --verbose"
+  },
+  "author": "",
+  "require": [
+    "babel-register"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "ava": "^0.24.0",
+    "babel": "^6.23.0",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.26.0",
+    "babel-preset-stage-3": "^6.24.1",
+    "babel-register": "^6.26.0",
+    "request": "^2.83.0",
+    "request-promise-native": "^1.0.5"
+  },
+  "ava": {
+    "files": [
+      "**/*.unit.js",
+      "**/*.integration.js"
+    ],
+    "require": [
+      "babel-register"
+    ],
+    "babel": "inherit",
+    "tap": true,
+    "failFast": true
+  },
+  "babel": {
+    "presets": [
+      "stage-3"
+    ],
+    "plugins": [
+      "transform-es2015-modules-commonjs",
+      "transform-class-properties"
+    ]
+  },
+  "dependencies": {
+    "fast-csv": "^2.4.1",
+    "qs": "^6.5.1"
+  }
+}

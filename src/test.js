@@ -1,5 +1,5 @@
 import Backtest, { 
-	parallel, 
+	runParallel, 
 	TransformableDataSeries,
 } from './src/backtest/Backtest';
 import CSVReader from './src/csv-reader/CSVReader';
@@ -108,7 +108,7 @@ class RebalancePositions extends Algorithm {
 class TargetPositions {}
 class OrderTransformer {}
 
-function serial(strategies, data) {
+function runSerial(strategies, data) {
 	const result = new TransformableDataSeries();
 	const targetPositions = new TargetPositions();
 	
@@ -141,7 +141,7 @@ function serial(strategies, data) {
 	// Has stream, accounts, optimizations
 	const backtest = new Backtest();
 	
-	backtest.setInstrumentSource(new CSVReader(['*-eod.csv']));
+	backtest.setDataSource(new CSVReader(['*-eod.csv']));
 
 	backtest.addOptimization('slowSMA', [5, 20]);
 	backtest.addOptimization('fastSMA', [20, 100]);
@@ -155,20 +155,20 @@ function serial(strategies, data) {
 
 	backtest.setStrategies((values) => {
 
-		const baseStrategy = parallel([
-			serial(
+		const baseStrategy = runParallel([
+			runSerial(
 				new RunMonthly(),
 				new RebalancePositions(),
 				new EqualPositionSize(),
 			),
-			serial(
+			runSerial(
 				new SMAAlgo('close', values('fastSMA'), values('slowSMA')),
 				new EqualPositionSize(),
 			)],
 			backtest.getInstruments(),
 		);
 
-		const metaStrategy = serial([
+		const metaStrategy = runSerial([
 				new SMAAlgo({ slowSMA: 5, fastSMA: 20 }),
 				new EqualPositionSize(),
 			], 
@@ -182,7 +182,7 @@ function serial(strategies, data) {
 	});
 
 	// Reads from stream and runs one stream per optimization.
-	await backtest.run();
+	await backtest.run(new Date(2010, 0, 1));
 
 	// Writes JSON for all instruments (setStream) and result1/2 (setResults) to file system
 	await backtest.save('./data');

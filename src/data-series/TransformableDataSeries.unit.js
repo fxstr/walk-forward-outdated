@@ -46,7 +46,7 @@ test('addTransformer: fails if transformer is not an object of next method is mi
 	t.throws(() => ds.addTransformer(new BadTransformer()));
 });
 
-test('addTransformer adds transformer', (t) => {
+test('addTransformer adds transformer and returns a map with symbols', (t) => {
 	const ds = new TransformableDataSeries();
 	class GoodTransformer {
 		next() {

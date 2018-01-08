@@ -16,6 +16,7 @@
     "babel": "^6.23.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-es2015-modules-commonjs": "^6.26.0",
+    "babel-polyfill": "^6.26.0",
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.26.0",
     "request": "^2.83.0",
@@ -44,6 +45,6 @@
   },
   "dependencies": {
     "fast-csv": "^2.4.1",
-    "qs": "^6.5.1"
+    "glob": "^7.1.2"
   }
 }

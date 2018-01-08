@@ -76,7 +76,8 @@ export default class TransformableDataSeries extends DataSeries {
 
 
 	/**
-	* Returns an object with all properties if the given properties are available, else false
+	* Returns an object with all properties if the given properties are available on the head 
+	* data row, else false
 	* @private
 	* @param {array} properties		Properties that must exist in order for the function to return
 	*								an object
@@ -236,7 +237,9 @@ export default class TransformableDataSeries extends DataSeries {
 	*/
 	createPromiseFromTransformer(value) {
 		if (value && value instanceof Promise) return value;
-		return new Promise((resolve) => resolve(value));
+		// Return a synchronously resolving promise
+		// (and not async by creating a new promise and then in the next loop resolving it)
+		return Promise.resolve(value);
 	}
 
 

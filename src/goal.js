@@ -1,6 +1,8 @@
 import Backtest, { 
-	runParallel, 
+	run, 
+	parallel, 
 	TransformableDataSeries,
+	InstrumentType,
 } from './src/backtest/Backtest';
 import CSVReader from './src/csv-reader/CSVReader';
 import SMA from './src/indicators/SMA';
@@ -108,7 +110,7 @@ class RebalancePositions extends Algorithm {
 class TargetPositions {}
 class OrderTransformer {}
 
-function runSerial(strategies, data) {
+function serial(strategies, data) {
 	const result = new TransformableDataSeries();
 	const targetPositions = new TargetPositions();
 	
@@ -149,39 +151,51 @@ function runSerial(strategies, data) {
 	// Adds transformers to all results
 	backtest.addResultTransformers('total', new SMA(50));
 
+	backtest.setInstrumentConfiguration({
+		AAPL: {
+			type: instrumentType.stock,
+			margin: 0.5
+		}
+	})
+
 	backtest.setConfiguration({
 		commission: (order) => order.size * order.instrument.head()[0].open * 0.01,
 	});
 
-	backtest.setStrategies((values) => {
+	backtest.setStrategies((params) => {
 
-		const baseStrategy = runParallel([
-			runSerial(
-				new RunMonthly(),
-				new RebalancePositions(),
-				new EqualPositionSize(),
+		// Returns an observable
+		const baseStrategy = run(
+			parallel(
+				// Use a simple SMA strategy; buy instruments for the same amount
+				serial(
+					new RunMonthly(),
+					new RebalancePositions(),
+					new EqualPositionSize(),
+				),
+				// Rebalance the open positions every month
+				serial(
+					new SMAAlgo('close', params('fastSMA'), params('slowSMA')),
+					new EqualPositionSize(),
+				),
 			),
-			runSerial(
-				new SMAAlgo('close', values('fastSMA'), values('slowSMA')),
-				new EqualPositionSize(),
-			)],
-			backtest.getInstruments(),
+			backtest.getInstruments()
 		);
 
-		const metaStrategy = runSerial([
+		// Use an SMA strategy *on* the result of our regular SMA strategy
+		const metaStrategy = run(
+			serial(
 				new SMAAlgo({ slowSMA: 5, fastSMA: 20 }),
 				new EqualPositionSize(),
-			], 
+			),
 			baseStrategy
 		);
-
-		metaStrategy.addTransformer('total', new SMA(100));
 
 		return [baseStrategy, metaStrategy];
 
 	});
 
-	// Reads from stream and runs one stream per optimization.
+	// Reads from stream and runs one stream per optimization; accepts start and end date
 	await backtest.run(new Date(2010, 0, 1));
 
 	// Writes JSON for all instruments (setStream) and result1/2 (setResults) to file system

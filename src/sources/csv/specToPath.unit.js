@@ -8,7 +8,7 @@ test('getPathsFromSpec: returns empty array for invalid glob', async (t) => {
 });
 
 test('getPathsFromSpec: returns correct array for valid glob', async (t) => {
-	const paths = await getPathsFromSpec(path.join(__dirname, '**/*.csv'));
+	const paths = await getPathsFromSpec(path.join(__dirname, '**/test-*/*.csv'));
 	t.deepEqual(paths, [
 		path.join(__dirname, 'test-data/invalid-test.csv'),
 		path.join(__dirname, 'test-data/test1.csv'),

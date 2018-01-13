@@ -17,8 +17,11 @@
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-es2015-modules-commonjs": "^6.26.0",
     "babel-polyfill": "^6.26.0",
+    "babel-preset-stage-2": "^6.24.1",
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.26.0",
+    "i": "^0.3.6",
+    "npm": "^5.6.0",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5"
   },
@@ -36,12 +39,17 @@
   },
   "babel": {
     "presets": [
-      "stage-3"
+      "stage-2"
     ],
     "plugins": [
       "transform-es2015-modules-commonjs",
       "transform-class-properties"
-    ]
+    ],
+    "env": {
+      "development": {
+        "sourceMaps": "inline"
+      }
+    }  
   },
   "dependencies": {
     "fast-csv": "^2.4.1",

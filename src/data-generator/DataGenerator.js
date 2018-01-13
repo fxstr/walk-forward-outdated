@@ -1,5 +1,5 @@
 import debug from 'debug';
-const log = debug('DataGenerator');
+const log = debug('WalkForward:DataGenerator');
 
 /**
 * We cache our data (see DataCache); this async generator merges cached and new data into one
@@ -18,54 +18,66 @@ export default class DataGenerator {
 	*/
 	currentCacheEntry = 0;
 
-	constructor(cache, source, sortFunction) {
+	/**
+	* Simple cache that prevents us from calling the original source every time the backtest
+	* runs (e.g. with different parameters)
+	*/
+	cache = [];
 
-		if (!cache || !cache.data || !Array.isArray(cache.data)) throw new Error(`DataGenerator: 
-			First argument passed to constructor must be the cache; it must contain a property  
-			called data which is an array.`);
+	constructor(source, sortFunction) {
 
 		if (!source || !source.read || typeof source.read !== 'function') {
-			throw new Error(`DataGenerator: Second argument passed to constructor must be a source
+			throw new Error(`DataGenerator: First argument passed to constructor must be a source
 				that has a property «read» which is a function.`);
 		}
 
 		if (sortFunction !== undefined && typeof sortFunction !== 'function') {
-			throw new Error(`DataGenerator: Third argument passed to constructor may be a
-				sort function; if you pass a third argument, make sure it's a function.`);
+			throw new Error(`DataGenerator: Second argument passed to constructor may be a
+				sort function; if you pass a second argument, make sure it's a function.`);
 		}
 
-		log('Initialize with source %o and cache %o', source, cache);
-		this.cache = cache;
+		log('Initialize with source %o and sorFunction %o', source, sortFunction);
 		this.source = source;
 		this.sortFunction = sortFunction;
 
 	}
+
 
 	/**
 	* Get the next data set
 	*/
 	async* generateData() {
 
+		log('generateData called');
+
 		while(true) {
 
 			// Read from cache as long as we have a next entry; if cache is empty, we make a call
 			// to source.read() which fills up the cache. Never return a record directly from the 
 			// source.
-			if (this.cache.data.length > this.currentCacheEntry) {
+			if (this.cache.length > this.currentCacheEntry) {
+				log('Take data from cache, index is %d', this.currentCacheEntry);
 				const sorted = this.sortFunction ? 
-					this.cache.data.slice(0).sort(this.sortFunction) :
-					this.cache.data;
+					this.cache.slice(0).sort(this.sortFunction) :
+					this.cache;
 				yield sorted[this.currentCacheEntry];
 				this.currentCacheEntry++;
 			}
 
-
 			// Cache is empty: Try to read next lines from the source. If source returns, continue
 			// reading from the cache; else break.
 			else {
+				log('Source has no more data; try to read');
 				const nextData = await this.source.read();
-				if (nextData !== false) continue;
-				else break;
+				log('Got data %o', nextData);
+				if (nextData !== false) {
+					this.cache.push(nextData);
+					log('Add data %o to cache to later read from', nextData);
+					continue;
+				} else {
+					log('Out of data');
+					break;
+				}
 			}
 
 		}

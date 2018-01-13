@@ -1,5 +1,5 @@
 import debug from 'debug';
-const log = debug('DataSeries');
+const log = debug('WalkForward:DataSeries');
 
 /**
 * Stores multiple values for a given key. Key is e.g. a date, values 'open', 'close' etc.

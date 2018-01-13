@@ -3,4 +3,4 @@
 // using require. Therefore we must also use require to load the tests.
 
 require('babel-polyfill');
-require('./Backtest.require.js');
+require('./BacktestInstruments.require.js');

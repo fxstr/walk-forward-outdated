@@ -1,7 +1,7 @@
 import csv from 'fast-csv';
 import debug from 'debug';
 import { getPathsFromSpecs } from './specToPath';
-const log = debug('CSVSource');
+const log = debug('WalkForward:CSVSource');
 
 
 /**
@@ -55,7 +55,7 @@ export default class CSVSource {
 				this.allRead = true;
 				this.readPromise = undefined;
 				resolve(result);
-			}, () => reject);
+			}, reject);
 		});
 		return this.readPromise;
 	}
@@ -103,11 +103,11 @@ export default class CSVSource {
 				})
 				.on('data-invalid', (err) => {
 					log('Reading file %s failed: %o', path, err);
-					reject(err);
+					reject(new Error(err));
 				})
 				.on('error', (err) => {
 					log('Reading file %s failed: %o', path, err);
-					reject(err);
+					reject(new Error(err));
 				});
 		});
 

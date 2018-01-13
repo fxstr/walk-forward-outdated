@@ -1,6 +1,6 @@
 import glob from 'glob';
 import debug from 'debug';
-const log = debug('specToPath');
+const log = debug('WalkForward:specToPath');
 
 
 /**

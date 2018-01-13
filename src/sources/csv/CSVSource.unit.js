@@ -9,7 +9,7 @@ test('constructor: checks arguments', (t) => {
 });
 
 test('reads single csv', async (t) => {
-	const csv = new CSVSource([path.join(__dirname, '**/t*1.csv')]);
+	const csv = new CSVSource([path.join(__dirname, 'test*/t*1.csv')]);
 	const result = await csv.read();
 	t.is(result.length, 1);
 	// Number of rows
@@ -20,13 +20,13 @@ test('reads single csv', async (t) => {
 });
 
 test('reads multiple csvs', async (t) => {
-	const csv = new CSVSource([path.join(__dirname, '**/t*.csv')]);
+	const csv = new CSVSource([path.join(__dirname, 'test*/t*.csv')]);
 	const result = await csv.read();
 	t.is(result.length, 2);
 });
 
 test('does not start a new read for every time read is called', async (t) => {
-	const csv = new CSVSource([path.join(__dirname, '**/t*.csv')]);
+	const csv = new CSVSource([path.join(__dirname, 'test*/t*.csv')]);
 	const result1 = csv.read();
 	const result2 = csv.read();
 	// Check if the same promise is returned
@@ -35,8 +35,14 @@ test('does not start a new read for every time read is called', async (t) => {
 });
 
 test('returns false if all data was read', async (t) => {
-	const csv = new CSVSource([path.join(__dirname, '**/t*.csv')]);
+	const csv = new CSVSource([path.join(__dirname, 'test*/t*.csv')]);
 	await csv.read();
 	const doneResult = csv.read();
 	t.is(doneResult, false);
+});
+
+test('returns error if file is invalid', async (t) => {
+	const csv = new CSVSource([path.join(__dirname, 'test*/invalid-test.csv')]);
+	const err = await t.throws(csv.read());
+	t.is(err instanceof Error, true);
 });

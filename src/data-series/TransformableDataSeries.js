@@ -1,6 +1,6 @@
 import DataSeries from './DataSeries';
 import debug from 'debug';
-const log = debug('TransformableDataSeries');
+const log = debug('WalkForward:TransformableDataSeries');
 
 /**
 * Extends DataSeries with transformers.

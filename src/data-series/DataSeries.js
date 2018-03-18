@@ -7,14 +7,16 @@ const log = debug('WalkForward:DataSeries');
 */
 export default class DataSeries {
 
-	/** @private */
+	/**
+	* @private 
+	* Holds the data series's data as objects
+	*/
 	internalData = [];
 	
 
 	/**
-	* Adds one or multiple values for a given key. Only one row (key) may be passed. Row is only
-	* pushed to data *after* all transformers were executed.
-	* @param {*} key
+	* Adds one or multiple values for a given key. 
+	* @param {string} key		Key for the row, must be a string as we're using an object
 	* @param {Object} data
 	*/
 	add(key, data) {
@@ -27,9 +29,10 @@ export default class DataSeries {
 				is ${ typeof data }.`);
 		}
 
-		this.data.push({
+		this.internalData.push({
 			key: key,
-			data: data,
+			// Clone data or original data is modified when set() is used
+			data: { ...data }, 
 		});
 	}
 
@@ -55,6 +58,7 @@ export default class DataSeries {
 	/**
 	* Adds data (columns) to the head row. Is needed for external scripts to modify the
 	* DataSeries and to add results of transformations.
+	* @param {object} data			Data to add to current row in the form of { colName: value }
 	*/
 	set(data) {
 		if (!data || typeof data !== 'object') {

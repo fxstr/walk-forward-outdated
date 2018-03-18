@@ -1,9 +1,13 @@
 import DataGenerator from '../data-generator/DataGenerator';
 import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
+import Optimization from '../optimization/Optimization';
 import debug from 'debug';
 import dataSortFunction from './dataSortFunction';
 const log = debug('WalkForward:Backtest');
 
+/**
+* The main class which holds most functionality.
+*/
 export default class Backtest {
 
 	/**
@@ -21,8 +25,15 @@ export default class Backtest {
 
 	/**
 	* Holds the instance of our data generator
+	* @private
 	*/
 	dataGenerator;
+
+	/**
+	* Backtest facades Optimization – this.optimization holds the corresponding instance
+	* @private
+	*/
+	optimization = new Optimization();
 
 	/**
 	* Define a data source; this might only be done once. DataSource must have a read method
@@ -81,6 +92,19 @@ export default class Backtest {
 
 
 	/**
+	* Adds a param that will be optimized. The default optimization type is logarithmic with a base 
+	* of 1.618 (golden ratio).
+	* @param {string} name			Name of the optimized parameter
+	* @param {array} bounds			Array with two numbers: from and to
+	* @param {integer} steps		Number of steps optimized parameter should take from {from}
+	*								to {to}
+	*/
+	addOptimization(name, bounds, steps) {
+		this.optimization.addParameter(name, bounds, steps);
+	}
+
+
+	/**
 	* Runs the backtest
 	*/
 	run() {
@@ -90,9 +114,15 @@ export default class Backtest {
 				more strategies. Use the setStrategies() method to do so.`);
 		}
 
-		const results = this.strategyFunction();
+
+
+		// Runs for every param combination possible
+		//const parameters = 
+
+		const results = this.strategyFunction({}, this.getInstruments());
 		log('Results from backtest.run are %o', results);
 
 	}
 
 }
+

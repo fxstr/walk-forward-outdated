@@ -44,7 +44,6 @@ test('returns correct results and fills cache with them', async (t) => {
 	const dg = new DataGenerator(validSource);
 	const result = [];
 	for await (const row of dg.generateData()) {
-		console.warn(row);
 		result.push(row);
 	}
 	t.deepEqual(result, [1, 2, undefined]);
@@ -55,12 +54,13 @@ test('returns correct results and fills cache with them', async (t) => {
 test('once through, reads data from cache', async (t) => {
 	const { validSource, readCounter } = setupData();
 	const dg = new DataGenerator(validSource);
-	const result = [];
 	for await (const row of dg.generateData()) {
+		row; // prevent empty blocks
 	}
 	t.is(readCounter.count, 4);
 	// Second loop: All data should come from cache, readCount should not go up
 	for await (const row of dg.generateData()) {
+		row; // prevent empty blocks
 	}
 	// Make one more call to see if there's more data
 	t.is(readCounter.count, 5);

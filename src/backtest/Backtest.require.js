@@ -1,6 +1,7 @@
 import test from 'ava';
 import Backtest from './Backtest';
 import debug from 'debug';
+import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
 const log = debug('WalkForward:Backtest.require');
 
 function setupData() {
@@ -16,7 +17,7 @@ function setupData() {
 			return new Promise((resolve) => {
 				const result = this.data[this.index] || false;
 				log('Return result %o', result);
-				resolve(result)
+				resolve(result);
 				this.index++;
 			});
 		}
@@ -30,12 +31,32 @@ test('accepts and stores strategies', (t) => {
 	const bt = new Backtest();
 	// Wrong argument
 	t.throws(() => bt.setStrategies('notafunction'), /function/);
+});
+
+test('cannot be run without strategies or instruments', (t) => {
+	const bt = new Backtest();
 	// Run without strategy
 	t.throws(() => bt.run(), /more strategies/);
-	// All fine
-	t.notThrows(() => bt.setStrategies(() => {}));
-	t.notThrows(() => bt.run());
+	// Run without instruments: Throws
+	bt.setStrategies(() => {});
+	t.throws(() => bt.run(), /accessing instruments/);
 });
+
+test('runs strategies after they were added with corret arguments', async (t) => {
+	const bt = new Backtest();
+	const { dataSource } = setupData();
+	const args = [];
+	bt.setDataSource(dataSource);
+	bt.setStrategies((params, instruments) => {
+		args.push([params, instruments]);
+	});
+	t.is(args.length, 0);
+	await bt.run();
+	t.is(args.length, 1);
+	t.deepEqual(args[0][0], {});
+	t.is(args[0][1] instanceof BacktestInstruments, true);
+});
+
 
 test('handles bad and good data sources', (t) => {
 	const { dataSource } = setupData();
@@ -63,7 +84,7 @@ test('getInstruments returns an emitter, calls handlers and awaits execution', a
 	const addedData = [];
 	instruments.on('newInstrument', (...data) => {
 		log('Instrument %o', data);
-		addedInstruments.push(data)
+		addedInstruments.push(data);
 	});
 	instruments.on('data', (...data) => {
 		log('Data %o', data);

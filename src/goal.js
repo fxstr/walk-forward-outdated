@@ -1,8 +1,9 @@
 import Backtest, { 
 	run, 
-	parallel, 
+	rejectOnFalse,
+	runThrough, 
 	TransformableDataSeries,
-	InstrumentType,
+	instrumentType,
 } from './src/backtest/Backtest';
 import CSVReader from './src/csv-reader/CSVReader';
 import SMA from './src/indicators/SMA';
@@ -44,11 +45,14 @@ class SMAAlgo extends Algorithm {
 	/**
 	* afterInstrumentBarClosed is called whenever any instrument gets new close data (which
 	* includes lows and highs). This is the place to build your orders. 
+	* @param {TransformableDataSeries} instrument
+	* @param {array} orders
 	*/
-	next(bar, instrument, orders) {
-		if (bar[this.fastSmaKey] > bar[this.slowSmaKey]) {
-			orders.add(bar.instrument);
+	onClose(orders, instrument) {
+		if (instrument.head()[this.fastSmaKey] > instrument.head()[this.slowSmaKey]) {
+			orders.push(instrument);
 		}
+		return orders;
 	}
 }
 
@@ -59,11 +63,14 @@ class SMAAlgo extends Algorithm {
 * is $10k and 4 orders are open, each position will be allocated $2.5k.
 */
 class EqualPositionSize extends Algorithm {
-	next(bar, instrument, orders) {
+	// backtest: 
+	// backtest.account
+	// backtest.positions
+	onClose(orders, data, instrument, backtest) {
 		orders.forEach((order) => {
-			order.setSize(this.account.cash / orders.length / 
-				order.instrument.head()[0]('open'));
+			order.size = backtest.account.cash / orders.length / order.instrument.head()['open'];
 		});
+		return orders;
 	}
 
 }
@@ -75,12 +82,13 @@ class Algorithm {}
 
 // Monthly rebalanncing
 class RunMonthly extends Algorithm {
-	next(bar) {
+	onClose(orders, instrument) {
 		// Return false if latestDate was not set (first call); else return true on month change
-		const monthChange = this.latestDate && bar.date.getMonth() !== this.latestDate.getMonth();
-		this.latestDate = bar.date;
+		const now = instrument.head().date;
+		const monthChange = !this.latestDate || now.getMonth() !== this.latestDate.getMonth();
+		this.latestDate = now;
 		// If false is returned, strategy is halted; else it continues
-		return monthChange;
+		return monthChange ? orders : false;
 	}
 }
 
@@ -90,11 +98,11 @@ class RunMonthly extends Algorithm {
 // - account
 class RebalancePositions extends Algorithm {
 	// Add every existing position to orders so that it can be rebalanced
-	next(bar, orders) {
-		this.positions.forEach((position) => {
-			orders.add(position.symbol);
+	next(orders, instrument, backtest) {
+		backtest.positions.forEach((position) => {
+			orders.push({ instrument: position.instrument });
 		});
-		return true;
+		return orders;
 	}
 }
 
@@ -136,6 +144,8 @@ function serial(strategies, data) {
 }
 
 
+class Sum {}
+
 
 
 (async () => {
@@ -145,52 +155,65 @@ function serial(strategies, data) {
 	
 	backtest.setDataSource(new CSVReader(['*-eod.csv']));
 
-	backtest.addOptimization('slowSMA', [5, 20]);
-	backtest.addOptimization('fastSMA', [20, 100]);
-
-	// Adds transformers to all results
-	backtest.addResultTransformers('total', new SMA(50));
+	// name, [from, to], steps; backtest will be run with 100 variations
+	backtest.addOptimization('slowSMA', [5, 20], 10);
+	backtest.addOptimization('fastSMA', [20, 100], 10);
 
 	backtest.setInstrumentConfiguration({
 		AAPL: {
 			type: instrumentType.stock,
 			margin: 0.5
 		}
-	})
-
-	backtest.setConfiguration({
-		commission: (order) => order.size * order.instrument.head()[0].open * 0.01,
 	});
 
-	backtest.setStrategies((params) => {
+	backtest.setConfiguration({
+		// $1 per instrument traded
+		commission: (order) => order.size * 1,
+		slippage: (order) => order.size * order.instrument.head()[0].open * 0.01,
+	});
 
-		// Returns an observable
+	backtest.setStrategies((params, instruments) => {
+
 		const baseStrategy = run(
-			parallel(
+			runThrough(
 				// Use a simple SMA strategy; buy instruments for the same amount
-				serial(
+				rejectOnFalse(
 					new RunMonthly(),
+					// Before buying new instruments, reduce the amount of the ones you're holding
 					new RebalancePositions(),
 					new EqualPositionSize(),
 				),
 				// Rebalance the open positions every month
-				serial(
+				rejectOnFalse(
 					new SMAAlgo('close', params('fastSMA'), params('slowSMA')),
 					new EqualPositionSize(),
 				),
 			),
-			backtest.getInstruments()
+			instruments,
+			// There's more config needed: account value, but also commissions etc.!
+			backtest.getConfiguration(),
+			'base'
 		);
 
 		// Use an SMA strategy *on* the result of our regular SMA strategy
 		const metaStrategy = run(
-			serial(
-				new SMAAlgo({ slowSMA: 5, fastSMA: 20 }),
+			rejectOnFalse(
+				new SMAAlgo('close', 5, 20),
 				new EqualPositionSize(),
 			),
-			baseStrategy
+			baseStrategy,
 		);
 
+		
+		// Get sum of my account's value, then add SMA to it to see SMA of the account's value
+		// *******!
+		// Do this in the config! Then we can inject it into run()
+		// *******!
+		//const total = metaStrategy.addTransformer(['cash', 'market'], new Sum());
+		//metaStrategy.addTransformer(total, new SMA(50));
+		//metaStrategy.addTransformer(total, r2);
+
+		// For every entry retrned, a CSV will be generated
 		return [baseStrategy, metaStrategy];
 
 	});
@@ -199,7 +222,8 @@ function serial(strategies, data) {
 	await backtest.run(new Date(2010, 0, 1));
 
 	// Writes JSON for all instruments (setStream) and result1/2 (setResults) to file system
-	await backtest.save('./data');
+	// True for zip/folder (?)
+	await backtest.save('./data', true);
 
 })();
 

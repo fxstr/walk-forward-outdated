@@ -13,7 +13,8 @@ export default class TransformableDataSeries extends DataSeries {
 	transformers = [];
 
 	/**
-	* Holds all transformers that were executed for the current row (see this.head())
+	* Holds all transformers that were executed for the current row (see this.head()), needed to
+	* make sure we don't execute a transformer multiple times for a given row.
 	* @private
 	*/
 	executedTransformers = [];
@@ -27,7 +28,7 @@ export default class TransformableDataSeries extends DataSeries {
 
 
 	/**
-	* Adds one or multiple data values for a given key. Only one row (key) may be passed. After
+	* Adds one or multiple data values for a given key. Only one row (key) may be passed. *After*
 	* the row is added, registered transformers are executed.
 	* @param {*} key
 	* @param {object} data

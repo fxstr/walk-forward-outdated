@@ -62,6 +62,21 @@ test('set does not overwrite data', (t) => {
 	t.throws(() => ds.set(data), /overwritten/);
 });
 
+// This was a real issue
+test('set does not change original data', (t) => {
+	const ds = new DataSeries();
+	const addData = { col: 'value1' };
+	const originalAddData = { ...addData };
+	ds.add(1, addData);
+	const data = {
+		newCol: 'value3'
+	};
+	const originalData = { ...data };
+	ds.set(data);
+	t.deepEqual(data, originalData);
+	t.deepEqual(addData, originalAddData);
+});
+
 
 
 

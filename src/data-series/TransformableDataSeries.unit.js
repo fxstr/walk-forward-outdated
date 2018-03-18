@@ -12,6 +12,13 @@ test('add returns promise', async (t) => {
 	await promise;
 });
 
+test('does not change original data', async (t) => {
+	const ds = new TransformableDataSeries();
+	const data = { col: 'value' };
+	const originalData = { ...data };
+	await ds.add(1, data);
+	t.deepEqual(originalData, data);
+});
 
 
 //////////////////// SET DATA
@@ -24,6 +31,14 @@ test('set returns a promise', async (t) => {
 	await promise;
 });
 
+test('does not change original data', async (t) => {
+	const ds = new TransformableDataSeries();
+	ds.add(1, { col: 'value1' });
+	const data = { newCol: 'value2' };
+	const originalData = { ...data };
+	await ds.set(data);
+	t.deepEqual(originalData, data);
+});
 
 
 

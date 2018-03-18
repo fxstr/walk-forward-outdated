@@ -8,7 +8,7 @@ export default class Instrument {
 	data = new TransformableDataSeries();
 
 	/**
-	* @param {string} name
+	* @param {string} name
 	*/
 	constructor(name) {
 		if (!name || typeof name !== 'string') throw new Error(`Instrument: Pass the name (string) 

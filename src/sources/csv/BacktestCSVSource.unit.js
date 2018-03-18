@@ -5,7 +5,7 @@ import BacktestCSVSource from './BacktestCSVSource';
 function setupData() {
 	function instrumentNameFunction(name) {
 		// Get file name, use it as instrument name
-		return name.match(/.*\/([^\/]*)\.csv$/)[1];
+		return name.match(/.*\/([^/]*)\.csv$/)[1];
 	}
 	return { instrumentNameFunction };
 }
@@ -50,6 +50,6 @@ test('reads files', async (t) => {
 		high: 6,
 		low: 2,
 		close: 5,
-	})
+	});
 	t.pass();
 });

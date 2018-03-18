@@ -49,10 +49,12 @@
       "development": {
         "sourceMaps": "inline"
       }
-    }  
+    }
   },
   "dependencies": {
     "fast-csv": "^2.4.1",
-    "glob": "^7.1.2"
+    "glob": "^7.1.2",
+    "talib": "^1.0.4",
+    "tulind": "^0.8.9"
   }
 }

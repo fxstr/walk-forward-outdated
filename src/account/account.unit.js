@@ -1,6 +1,5 @@
 import test from 'ava';
 
-test('1', (t) => {
-	
+test('', (t) => {
 	t.pass();
 });

@@ -7,7 +7,7 @@ const log = debug('WalkForward:BacktestCSVSource');
 * Wrapper around CSVSource that formats CSV's data for use with backtests:
 * - file name becomes instrument name
 * - date becomes a date
-* - numbers become reeeeeal numbers … 
+* - numbers become reeeeeal numbers …
 */
 export default class BacktestCSVSource extends CSVSource {
 

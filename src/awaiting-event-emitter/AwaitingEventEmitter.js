@@ -1,7 +1,7 @@
 import debug from 'debug';
 const log = debug('WalkForward:AwaitingEventEmitter');
 
-export default class AwaitingEventEmitter {
+export default class AwaitingEventEmitter {
 
 	handlers = new Map();
 
@@ -13,7 +13,7 @@ export default class AwaitingEventEmitter {
 	on(type, callback) {
 		this.checkType(type);
 		if (!callback || typeof callback !== 'function') {
-			throw new Error(`AwaitingEventEmitter : Second argument must be a function which handles
+			throw new Error(`AwaitingEventEmitter: Second argument must be a function which handles
 				the callbacks.`);
 		}
 
@@ -47,7 +47,7 @@ export default class AwaitingEventEmitter {
 	*/
 	checkType(type) {
 		if (!type || typeof type !== 'string') {
-			throw new Error(`AwaitingEventEmitter : Pass a string as the first argument to the 
+			throw new Error(`AwaitingEventEmitter: Pass a string as the first argument to the 
 				on method; it holds the type's name.`);
 		}
 	}

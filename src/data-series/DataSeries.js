@@ -1,4 +1,5 @@
 import debug from 'debug';
+import convertObjectToMap from './convertObjectToMap';
 const log = debug('WalkForward:DataSeries');
 
 /**
@@ -9,31 +10,45 @@ export default class DataSeries {
 
 	/**
 	* @private 
-	* Holds the data series's data as objects
+	* Holds the data series's data as objects with key: key, data: Map()
 	*/
 	internalData = [];
 	
 
+
+
 	/**
 	* Adds one or multiple values for a given key. 
-	* @param {string} key		Key for the row, must be a string as we're using an object
-	* @param {Object} data
+	* @param {*} key				Key for the row
+	* @param {Map|object} data		Data to add, Maps are preferred
 	*/
 	add(key, data) {
 
 		log('Add key %o, data %o', key, data);
 
-		// Validate data parameter
-		if (!data || typeof data !== 'object') {
-			throw new Error(`DataSeries: Second parameter passed to add must be an object,
-				is ${ typeof data }.`);
+		// If an object (which is not a map) is passed, try to convert it to a Map
+		if (typeof data === 'object' && !(data instanceof Map)) {
+			try {
+				data = convertObjectToMap(data);
+			}
+			catch(err) {
+				log(`Could not convert object passed to a map, error is %s.`, err.message);
+			}
 		}
 
-		this.internalData.push({
+		// Validate data parameter
+		if (!data || !(data instanceof Map)) {
+			throw new Error(`DataSeries: Second parameter passed to add method must be a Map,
+				is ${ data }.`, );
+		}
+
+		// Use object with keys 'key' and 'data' to store our data
+		const entry = {
 			key: key,
 			// Clone data or original data is modified when set() is used
-			data: { ...data }, 
-		});
+			data: new Map(data),
+		}
+		this.internalData.push(entry);
 	}
 
 
@@ -58,31 +73,42 @@ export default class DataSeries {
 	/**
 	* Adds data (columns) to the head row. Is needed for external scripts to modify the
 	* DataSeries and to add results of transformations.
-	* @param {object} data			Data to add to current row in the form of { colName: value }
+	* @param {Map|object} data			Data to add to current row in the form of { colName: value }
+	*									or new Map([['col': 'value']]). Maps are preferred.
 	*/
 	set(data) {
-		if (!data || typeof data !== 'object') {
-			throw new Error(`DataSeries: argument for set method must be an object, is 
-				${ typeof data }.`);
+
+		// If an object (which is not a map) is passed, try to convert it to a Map
+		if (typeof data === 'object' && !(data instanceof Map)) {
+			try {
+				data = convertObjectToMap(data);
+			}
+			catch(err) {
+				log(`Could not convert object passed to a map, error is %s.`, err.message);
+			}
+		}
+
+		if (!data || !(data instanceof Map)) {
+			throw new Error(`DataSeries: argument for set method must be a Map, is %o`,
+				data);
 		}
 		if (!this.internalData.length) {
-			throw new Error(`DataSeries: Cannot set data to head row as there are no rows 
+			throw new Error(`DataSeries: Cannot set data on head row as there are no rows 
 				at all`);
 		}
-		const keys = Object.keys(data).concat(Object.getOwnPropertySymbols(data));
-		log('Set columns for keys %o on head row', keys);
 		const headRow = this.head();
-		keys.forEach((key) => {
+		for (const [key, value] of data) {
 			// Don't let user overwrite existing data; if we did, we'd have to implement an other
 			// test to see if transformers were called.
-			if (headRow.data.hasOwnProperty(key)) {
+			if (headRow.has(key)) {
 				throw new Error(`DataSeries: Existing values cannot be overwritten by using the
-					set method; tried to overwrite ${ key } with ${ data[key] }, is 
-					${headRow.data[key] }.`);
+					set method; tried to overwrite %o with %o, is already %o`, key, value,
+					headRow.get(key));
 			}
-			log('Set key %o to %o', key, data[key]);
-			headRow.data[key] = data[key];
-		});
+			log('Set col %o to %o', key, value);
+			headRow.set(key, value);
+
+		}
 	}
 
 
@@ -90,12 +116,14 @@ export default class DataSeries {
 	* Returns the latest few rows
 	* @param {int} itemCount		Amount of items to return, defaults to 1
 	* @returns {array|object}		Array of objects (if param intemCount > 1), else a single 
-	*								object. Each object contains two properties key and data.
+	*								object (wich corresponds to the data field of internalData; key
+	*								is ignored)
 	*/
 	head(itemCount = 1) {
 		const result = this.internalData
 			.slice(itemCount * -1)
-			.reverse();
+			.reverse()
+			.map((item) => item.data);
 		return itemCount === 1 ? result[0] : result;
 	}
 
@@ -104,10 +132,13 @@ export default class DataSeries {
 	* Returns the first few rows
 	* @param {int} itemCount		Amount of items to return, defaults to 1
 	* @returns {array|object}		Array of objects (if param intemCount > 1), else a single 
-	*								object. Each object contains two properties key and data.
+	*								object (wich corresponds to the data field of internalData; key
+	*								is ignored)
 	*/
 	tail(itemCount = 1) {
-		const result = this.internalData.slice(0, itemCount);
+		const result = this.internalData
+			.slice(0, itemCount)
+			.map((item) => item.data);
 		return itemCount === 1 ? result[0] : result;
 	}
 
@@ -129,9 +160,9 @@ export default class DataSeries {
 	* @protected
 	* @param {*} columnName		Name of the column to look for
 	*/
-	doesHeadRowContainColumn(columnName) {
-		return this.head().length && this.head()[0].data.hasOwnProperty(columnName);
-	}
+	/*doesHeadRowContainColumn(columnName) {
+		return this.head().length && this.head()[0].hasOwnProperty(columnName);
+	}*/
 
 }
 

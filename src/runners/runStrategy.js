@@ -11,10 +11,11 @@ const account = {};
 * @param {Map} config							Config to run the backtest with. May contain keys:
 *												- accountValue
 *												- …
+* @param {function} executeOrders				Pre-configured function to execute orders
 */
-export default async function run(runnerFunction, instruments, name, config) {
+export default async function run(runnerFunction, instruments, name, executeOrders) {
 	instruments.on('close', (data) => handleClose(runnerFunction, data));
-	instruments.on('open', (data) => handleOrders(data, config));
+	instruments.on('open', (data) => executeOrders(orders, data, instruments));
 	await instruments.run();
 	return account;
 }
@@ -33,8 +34,10 @@ function handleClose(runnerFunction, data) {
 /**
 * @param {object} eventData		Data emitted by instruments on 'open' event
 */
-function handleOrders(eventData) {
+/*function handleOpen(eventData, backtestInstance) {
+	executeOrders(eventData)
+	if (!orders.length) return;
 	if (orders.length) {
-		console.log('has order', eventData);
+		console.log('has order', eventData, config, backtestInstance);
 	}
-}
+}*/

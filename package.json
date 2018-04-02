@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node node_modules/ava/cli.js --watch --verbose"
+    "test": "node node_modules/ava/cli.js --watch --verbose --serial"
   },
   "author": "",
   "require": [
@@ -45,16 +45,12 @@
       "transform-es2015-modules-commonjs",
       "transform-class-properties"
     ],
-    "env": {
-      "development": {
-        "sourceMaps": "inline"
-      }
-    }
+    "sourceMaps": "inline"
   },
   "dependencies": {
     "fast-csv": "^2.4.1",
     "glob": "^7.1.2",
     "talib": "^1.0.4",
-    "tulind": "^0.8.9"
+    "tulind": "^0.8.10"
   }
 }

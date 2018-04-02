@@ -1,6 +1,6 @@
 # Walk Forward
 
-Walk Forward is a framework to backtest your trading strategies, completely written in JavaScript.
+Walk Forward is a framework that let's you backtest your trading strategies (stocks, futures, forex, crypto currencies, …). It is completely written in JavaScript.
 
 ## Features
 
@@ -11,7 +11,7 @@ Walk Forward is a framework to backtest your trading strategies, completely writ
 - Written in a flexbile, heavily used and steadily improving language (yes, JavaScript), using current developments (ES6 modules, `async`/`await`)
 - Used and tested (unit/integration tests) on the server side, but should also work in the frontend
 - Open source (ISC license)
-- Uses [tulip's](https://tulipindicators.org) indicators
+- Uses some of [tulip's](https://tulipindicators.org) indicators
 
 ## Example Code
 
@@ -23,7 +23,7 @@ Algos and stacks
 
 ### Backtest
 
-#### `backtest.run()`
+`backtest.run()`
 
 ### Transformers
 
@@ -44,6 +44,7 @@ Instruments, results
 - [ ] Relevant ouptut in form of tables (orders, positions in addition to charts)
 - [ ] Better charts for parameter optimization (2D/3D visualization)
 - [ ] More data sources
+- [ ] Currency handling
 - [ ] Walk forward optimization
 - Better docs, always better docs
 

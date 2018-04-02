@@ -23,7 +23,6 @@ test('throws on invalid arguments for on', (t) => {
 	t.throws(() => ee.on(true), /type/);
 	t.throws(() => ee.on('test'), /callback/);
 	t.throws(() => ee.on('test', 2), /callback/);
-	t.pass();
 });
 
 test('throws on invalid arguments for emit', async (t) => {

@@ -43,13 +43,12 @@ test('reads files', async (t) => {
 	t.is(result.length, 2);
 	// 4 rows in test1
 	t.is(result[0].length, 4);
-	t.deepEqual(result[0][0], {
-		date: new Date('2018-01-02'),
-		instrument: 'test1',
-		open: 3,
-		high: 6,
-		low: 2,
-		close: 5,
-	});
-	t.pass();
+	const firstResult = result[0][0];
+	t.is(firstResult.size, 6);
+	t.deepEqual(firstResult.get('date'), new Date('2018-01-02'));
+	t.is(firstResult.get('instrument'), 'test1');
+	t.is(firstResult.get('open'), 3);
+	t.is(firstResult.get('high'), 6);
+	t.is(firstResult.get('low'), 2);
+	t.is(firstResult.get('close'), 5);
 });

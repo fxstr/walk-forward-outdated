@@ -34,7 +34,7 @@ export default class AwaitingEventEmitter {
 			log('No handlers available for type \'%s\'', type);
 			return;
 		}
-		log('Call %d handlers for type \'%s\'', callbacks.size, type);
+		log('Call %d handlers for type \'%s\'', callbacks.length, type);
 		for (const callback of callbacks) {
 			await callback(data);
 		}

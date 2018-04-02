@@ -7,9 +7,10 @@ test('creates instrument', (t) => {
 	t.is(instrument.name, 'test');
 });
 
-test('adds to data series', async (t) => {
+test('has methods of TransformableDataSeries', async (t) => {
 	const instrument = new Instrument('test');
-	const result = instrument.addData(new Date(2010, 0, 1), { empty: true });
+	const result = instrument.add(new Date(2010, 0, 1), { empty: true });
 	t.is(result instanceof Promise, true);
 	await result;
+	t.is(instrument.data.length, 1);
 });

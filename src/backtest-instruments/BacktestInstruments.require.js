@@ -3,37 +3,35 @@ import BacktestInstruments from './BacktestInstruments';
 
 function setupData() {
 	// Create a generator function
-	const data = [{
-		date: new Date(2018, 0, 1),
-		instrument: 'aapl',
-		open: 5,
-		close: 3,
-		high: 5,
-	}, {
-		date: new Date(2018, 0, 1),
-		instrument: '0700',
-		open: 2,
-		close: 4,
-		high: 4,
-	}, {
-		date: new Date(2018, 0, 2),
-		instrument: 'aapl',
-		open: 4,
-		close: 2,
-		high: 4,
-	}, {
-		date: new Date(2018, 0, 4),
-		instrument: 'aapl',
-		open: 6,
-		close: 7,
-		high: 8,
-	}];
-	let currentIndex = 0;
+	const data = [new Map([
+		['date', new Date(2018, 0, 1)],
+		['instrument', 'aapl'],
+		['open', 5],
+		['close', 3],
+		['high', 5],
+	]), new Map([
+		['date', new Date(2018, 0, 1)],
+		['instrument', '0700'],
+		['open', 2],
+		['close', 4],
+		['high', 4],
+	]), new Map([
+		['date', new Date(2018, 0, 2)],
+		['instrument', 'aapl'],
+		['open', 4],
+		['close', 2],
+		['high', 4],
+	]), new Map([
+		['date', new Date(2018, 0, 4)],
+		['instrument', 'aapl'],
+		['open', 6],
+		['close', 7],
+		['high', 8],
+	])];
 	async function* generatorFunction() {
-		while (currentIndex < data.length) {
+		for (const item of data) {
 			await new Promise((resolve) => setTimeout(resolve, 10));
-			yield data[currentIndex];
-			currentIndex++;
+			yield item;
 		}
 	}
 
@@ -52,18 +50,47 @@ test('throws on invalid arguments', (t) => {
 
 test('throws on invalid data (date missing)', async (t) => {
 	async function* generatorFunction() {
-		yield { noDateField: true };
+		yield new Map([['noDateField', true]]);
 	}
 	const bi = new BacktestInstruments(generatorFunction);
 	const err = await t.throws(bi.run());
 	t.is(err.message.indexOf('contain a date') > -1, true);
 });
 
+test('throws on invalid data (date invalid)', async (t) => {
+	async function* generatorFunction() {
+		yield new Map([['date', new Date('invalid')]]);
+	}
+	const bi = new BacktestInstruments(generatorFunction);
+	const err = await t.throws(bi.run());
+	t.is(err.message.indexOf('contain a date') > -1, true);
+});
+
+test('throws on invalid close property', async (t) => {
+	async function* generatorFunction() {
+		yield new Map([['date', new Date(2010, 0, 1)], ['close', 'invalid']]);
+	}
+	const bi = new BacktestInstruments(generatorFunction);
+	const err = await t.throws(bi.run());
+	t.is(err.message.indexOf('not a number') > -1, true);
+});
+
+// Not needed as we invalid opens are okay
+/*test('throws on invalid open property', async (t) => {
+	async function* generatorFunction() {
+		yield { date: new Date(2010, 0, 1), close: 5, open: 'invalid' };
+	}
+	const bi = new BacktestInstruments(generatorFunction);
+	const err = await t.throws(bi.run());
+	t.is(err.message.indexOf('not numbers') > -1, true);
+});*/
+
 test('iterates over generator, emits events for newInstrument', async (t) => {
 	const { generatorFunction, dataHandler, dataHandled } = setupData();
 	const bi = new BacktestInstruments(generatorFunction);
 	bi.on('newInstrument', dataHandler);
 	await bi.run();
+	console.log(dataHandled);
 	t.is(dataHandled.length, 2);
 	t.is(dataHandled[0][0].name, 'aapl');
 	t.is(dataHandled[1][0].name, '0700');
@@ -78,9 +105,16 @@ test('updates instrument with close event', async (t) => {
 	t.is(dataHandled[0][0].instrument.name, 'aapl');
 	t.is(dataHandled[1][0].instrument.name, '0700');
 	// There were 3 data series for aapl
-	t.is(dataHandled[0][0].instrument.data.data.length, 3);
+	t.is(dataHandled[0][0].instrument.data.length, 3);
 	// Same instrument for aapl (not a new instance)
 	t.is(dataHandled[0][0].instrument, dataHandled[2][0].instrument);
+	// Check if instrument was updated correctly
+	const tail = dataHandled[0][0].instrument.tail();
+	t.is(tail.size, 4);
+	t.is(tail.get('close'), 3);
+	t.deepEqual(tail.get('date'), new Date(2018, 0, 1));
+	t.is(tail.get('high'), 5);
+	t.is(tail.get('open'), 5);
 });
 
 test('emits the correct data with close event', async (t) => {
@@ -88,31 +122,46 @@ test('emits the correct data with close event', async (t) => {
 	const bi = new BacktestInstruments(generatorFunction);
 	bi.on('close', dataHandler);
 	await bi.run();
-	// Check instrument 
-	t.deepEqual(dataHandled[0][0].data, {
-		open: 5,
-		close: 3,
-		high: 5
-	});
+	// Check data emitted with event 
+	const data = dataHandled[0][0].data;
+	t.is(data.size, 4);
+	t.is(data.get('open'), 5);
+	t.is(data.get('close'), 3);
+	t.is(data.get('high'), 5);
+	t.deepEqual(data.get('date'), new Date(2018, 0, 1));
 });
 
 test('updates instrument with open event', async (t) => {
 	const { generatorFunction, dataHandler, dataHandled } = setupData();
 	const bi = new BacktestInstruments(generatorFunction);
-	bi.on('open', dataHandler);
-	// Instrument only contains open property at time of open event
+	// Check if all open events were fired
+	let openEventCount = 0;
+	bi.on('open', (...args) => {
+		dataHandler(...args);
+		// Check instrument's data on first open event
+		if (openEventCount === 0) {
+			const tail = dataHandled[0][0].instrument.tail();
+			t.is(tail.size, 2);
+			t.deepEqual(tail.get('date'), new Date(2018, 0, 1));
+			t.is(tail.get('open'), 5);
+		}
+		openEventCount++;
+	});
+	// Instrument contains only the "open" property at time of open event (not close etc.)
 	bi.on('open', (data) => {
-		const latestRow = data.instrument.data.head();
-		t.deepEqual(Object.keys(latestRow.data), ['open']);
+		const latestRow = data.instrument.head();
+		t.deepEqual(Array.from(latestRow.keys()), ['open', 'date']);
 	});
 	await bi.run();
+	t.is(openEventCount, 4);
 	// Check instrument 
 	t.is(dataHandled[0][0].instrument.name, 'aapl');
 	t.is(dataHandled[1][0].instrument.name, '0700');
 	// There were 3 data series for aapl
-	t.is(dataHandled[0][0].instrument.data.data.length, 3);
-	// Same instrument for aapl  (not a new instance)
+	t.is(dataHandled[0][0].instrument.data.length, 3);
+	// Same instrument for aapl (not a new instance)
 	t.is(dataHandled[0][0].instrument, dataHandled[2][0].instrument);
+	// Check if instrument was updated correctly
 });
 
 test('emits the correct data with open event', async (t) => {
@@ -121,12 +170,15 @@ test('emits the correct data with open event', async (t) => {
 	bi.on('open', dataHandler);
 	await bi.run();
 	// Event only contains open data (not close etc.)
-	t.deepEqual(dataHandled[0][0].data, { open: 5 });
+	const data = dataHandled[0][0].data;
+	t.is(data.size, 2);
+	t.is(data.get('open'), 5);
+	t.deepEqual(data.get('date'), new Date(2018, 0, 1));
 });
 
 test('does not fail or emit open if no open data is available', async (t) => {
 	async function* generatorFunction() {
-		yield { date: new Date(2018, 0, 1), instrument: 'test' };
+		yield new Map([['date', new Date(2018, 0, 1)], ['instrument', 'test'], ['close', 5]]);
 	}
 	const openEvents = [];
 	const closeEvents = [];
@@ -148,9 +200,27 @@ test('regular (non-backtest) mode has the right events and order', async (t) => 
 	bi.on('close', (data) => {
 		eventOrder.push('close-' + data.instrument.name);
 	});
+	bi.on('afterOpen', (data) => {
+		// data is an array of instruments
+		eventOrder.push('afterOpen-' + data[0].name);
+	})
 	await bi.run();
-	t.deepEqual(eventOrder, ['open-aapl', 'close-aapl', 'open-0700', 'close-0700', 
-		'open-aapl', 'close-aapl', 'open-aapl', 'close-aapl']);
+	t.deepEqual(eventOrder, ['open-aapl', 'afterOpen-aapl', 'close-aapl', 'open-0700', 
+		'afterOpen-0700', 'close-0700', 'open-aapl', 'afterOpen-aapl', 'close-aapl', 'open-aapl', 
+		'afterOpen-aapl', 'close-aapl']);
+});
+
+test('backtestMode fires events for all (even the last) generated data', async (t) => {
+	// Last instrument does not fire within the for-of-loop but just afterwards (because date does
+	// not change)
+	const { generatorFunction } = setupData();
+	const bi = new BacktestInstruments(generatorFunction, true);
+	let instrumentsClosed = 0;
+	bi.on('close', (data) => {
+		instrumentsClosed++;
+	});
+	await bi.run();
+	t.is(instrumentsClosed, 4);
 });
 
 test('backtestMode has the right events and order', async (t) => {
@@ -163,14 +233,18 @@ test('backtestMode has the right events and order', async (t) => {
 	bi.on('close', (data) => {
 		eventOrder.push('close-' + data.instrument.name);
 	});
+	bi.on('afterOpen', (data) => {
+		// Data is an array of instruments
+		const instruments = data.map((item) => item.name).join('-');
+		eventOrder.push('afterOpen-' + instruments);
+	})
 	await bi.run();
 	// Latest data set does not emit an event, as we don't yet know if the date has changed 
 	// (or if we're at the end as we might be using a continuous stream).
-	t.deepEqual(eventOrder, ['open-aapl', 'open-0700', 'close-aapl', 'close-0700', 
-		'open-aapl', 'close-aapl']);	
-	t.pass();
+	t.deepEqual(eventOrder, ['open-aapl', 'open-0700', 'afterOpen-aapl-0700', 'close-aapl', 
+		'close-0700', 'open-aapl', 'afterOpen-aapl', 'close-aapl', 'open-aapl', 'afterOpen-aapl', 
+		'close-aapl']);	
 });
-
 
 
 

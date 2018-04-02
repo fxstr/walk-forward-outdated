@@ -5,7 +5,7 @@ import Backtest, {
 	TransformableDataSeries,
 	instrumentType,
 } from './src/backtest/Backtest';
-import CSVReader from './src/csv-reader/CSVReader';
+import BacktestCSVSource from './src/csv-reader/CSVReader';
 import SMA from './src/indicators/SMA';
 
 
@@ -153,7 +153,9 @@ class Sum {}
 	// Has stream, accounts, optimizations
 	const backtest = new Backtest();
 	
-	backtest.setDataSource(new CSVReader(['*-eod.csv']));
+	// First param: Use file name (without .csv ending) as the instrument's name
+	// Second param: Read all files in the current folder that end with "-eod.csv"
+	backtest.setDataSource(new BacktestCSVSource((name) => name.substr(0, -4), ['*-eod.csv']));
 
 	// name, [from, to], steps; backtest will be run with 100 variations
 	backtest.addOptimization('slowSMA', [5, 20], 10);
@@ -172,50 +174,21 @@ class Sum {}
 		slippage: (order) => order.size * order.instrument.head()[0].open * 0.01,
 	});
 
-	backtest.setStrategies((params, instruments) => {
-
-		const baseStrategy = run(
-			runThrough(
-				// Use a simple SMA strategy; buy instruments for the same amount
-				rejectOnFalse(
-					new RunMonthly(),
-					// Before buying new instruments, reduce the amount of the ones you're holding
-					new RebalancePositions(),
-					new EqualPositionSize(),
-				),
-				// Rebalance the open positions every month
-				rejectOnFalse(
-					new SMAAlgo('close', params('fastSMA'), params('slowSMA')),
-					new EqualPositionSize(),
-				),
-			),
-			instruments,
-			// There's more config needed: account value, but also commissions etc.!
-			backtest.getConfiguration(),
-			'base'
-		);
-
-		// Use an SMA strategy *on* the result of our regular SMA strategy
-		const metaStrategy = run(
+	backtest.setStrategies((params) => {
+		return runThrough(
+			// Use a simple SMA strategy; buy instruments for the same amount
 			rejectOnFalse(
-				new SMAAlgo('close', 5, 20),
+				new RunMonthly(),
+				// Before buying new instruments, reduce the amount of the ones you're holding
+				new RebalancePositions(),
 				new EqualPositionSize(),
 			),
-			baseStrategy,
+			// Rebalance the open positions every month
+			rejectOnFalse(
+				new SMAAlgo('close', params('fastSMA'), params('slowSMA')),
+				new EqualPositionSize(),
+			),
 		);
-
-		
-		// Get sum of my account's value, then add SMA to it to see SMA of the account's value
-		// *******!
-		// Do this in the config! Then we can inject it into run()
-		// *******!
-		//const total = metaStrategy.addTransformer(['cash', 'market'], new Sum());
-		//metaStrategy.addTransformer(total, new SMA(50));
-		//metaStrategy.addTransformer(total, r2);
-
-		// For every entry retrned, a CSV will be generated
-		return [baseStrategy, metaStrategy];
-
 	});
 
 	// Reads from stream and runs one stream per optimization; accepts start and end date

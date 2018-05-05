@@ -1,8 +1,10 @@
+import colors from 'colors';
+import debug from 'debug';
 import DataGenerator from '../data-generator/DataGenerator';
 import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
+import BacktestInstance from '../backtest-instance/BacktestInstance';
 import Optimization from '../optimization/Optimization';
-import debug from 'debug';
-import dataSortFunction from './dataSortFunction';
+import dataSortFunction from '../data-sort-function/dataSortFunction';
 const log = debug('WalkForward:Backtest');
 
 /**
@@ -24,22 +26,59 @@ export default class Backtest {
 	dataSource;
 
 	/**
-	* Holds the instance of our data generator
-	* @private
-	*/
-	dataGenerator;
-
-	/**
 	* Backtest facades Optimization – this.optimization holds the corresponding instance
 	* @private
 	*/
 	optimization = new Optimization();
 
+	configuration = new Map([
+		['cash', () => 100000]
+	]);
+
+	/**
+	* Sets configuration for backtest (commissions, initial cash etc.)
+	* @param {Map<string, function>} backtestConfig		Configuration for the backtest; valid keys
+	*													are:
+	*													- cash (initial amount on cash account)
+	*/
+	setConfiguration(backtestConfig) {
+		const validKeys = ['cash'];
+		
+		// Not a map
+		if (!(backtestConfig instanceof Map)) throw new Error(`Backtest: Single parameter passed
+			to setConfiguration must be a Map, is ${ backtestConfig }.`);
+		
+		// Invalid keys (warning)
+		Array.from(backtestConfig.keys()).forEach((key) => {
+			if (validKeys.indexOf(key) === -1) console.log(`WARNING: You passed a config through
+				Backtest.setConfiguration() that contains an unknown key (${ key }).`);
+		});
+
+
+		// Valid keys, but value is not a function
+		validKeys.forEach((key) => {
+			// Key is not present: use default, no need to check value
+			if (!backtestConfig.get(key)) return;
+			if (typeof backtestConfig.get(key) !== 'function') throw new Error(`Backtest: 
+				Configuration for ${ key } passed to Backtest.setConfiguration() must be a 
+				function, is ${ typeof backtestConfig.get(key) }.`);
+			// Add key to valid config
+		});
+
+		// Update this.configuration with valid keys
+		validKeys.forEach((key) => {
+			if (!backtestConfig.has(key)) return;
+			this.configuration.set(key, backtestConfig.get(key));
+		});
+
+	}
+
+
 	/**
 	* Define a data source; this might only be done once. DataSource must have a read method
 	* which returns a promise that resolves to the data available (see CSVSource and 
-	* BacktestCSVSource).
-	* @param {object} source				Source to add
+	* BacktestCSVSource). 
+	* @param {class} source				Source to add
 	* @param {function} source.read
 	*/
 	setDataSource(source) {
@@ -50,14 +89,12 @@ export default class Backtest {
 		}
 
 		if (!source || typeof source.read !== 'function') {
-			throw new Error(`Backtest: when using setSource, pass an instance that has a read
+			throw new Error(`Backtest: When using setSource, pass an instance that has a read
 				method.`);
 		}
 
-		this.dataSource = source;
-		this.dataGenerator = new DataGenerator(this.dataSource, dataSortFunction);
-		
-		log('Set dataSource to %o, generator is %o', source, this.dataGenerator);
+		this.dataSource = source;		
+		log('Set dataSource to %o', source);
 
 	}
 
@@ -78,22 +115,7 @@ export default class Backtest {
 
 
 	/**
-	* Returns a generator wrapper around the data source that will be passed as the second parameter
-	* to the run function. Emits 'data' and 'newInstrument' events whenever they occur, then awaits
-	* callbacks.
-	*/
-	getInstruments() {
-		if (!this.dataGenerator) {
-			throw new Error(`Backtest: Use setDataSource(source) method to add a data source before 
-				accessing instruments through getInstruments().`);
-		}
-		return new BacktestInstruments(this.dataGenerator.generateData.bind(this.dataGenerator));
-	}
-
-
-	/**
-	* Adds a param that will be optimized. The default optimization type is logarithmic with a base 
-	* of 1.618 (golden ratio).
+	* Adds a param that will be optimized. The default optimization type is logarithmic.
 	* @param {string} name			Name of the optimized parameter
 	* @param {array} bounds			Array with two numbers: from and to
 	* @param {integer} steps		Number of steps optimized parameter should take from {from}
@@ -104,10 +126,11 @@ export default class Backtest {
 	}
 
 
+
 	/**
 	* Runs the backtest
 	*/
-	run() {
+	async run() {
 
 		if (!this.strategyFunction) {
 			throw new Error(`Backtest: You can only run a backtest after having added one or
@@ -115,13 +138,49 @@ export default class Backtest {
 		}
 
 
+		// This is not a public method; test input/available data none the less (for unit tests).
+		if (!this.dataSource) {
+			throw new Error(`Backtest: Use setDataSource(source) method to add a data source before 
+				running a backtest.`);
+		}
 
-		// Runs for every param combination possible
-		//const parameters = 
+		// Used for caching data. Because the user instantiates the source and passes the instance
+		// to backtest, we can also not use the source multiple times (because it's an instance,
+		// not the class)
+		const generator = new DataGenerator(this.dataSource, dataSortFunction);
 
-		const results = this.strategyFunction({}, this.getInstruments());
-		log('Results from backtest.run are %o', results);
+		const hasOptimizations = !!this.optimization.parameterConfigs.size;
+		const parameterSets = hasOptimizations ? this.optimization.generateParameterSets() : 
+			[undefined];
 
+		// Holds the results for each instance of parameterSets the backtest was run for
+		const instances = [];
+
+		for (const parameterSet of parameterSets) {
+
+			// Define INSIDE of parameter loop; as a BacktestInstrument emits open/close events,
+			// it must be re-instantiated every single time we run a backtest. Caching is done 
+			// through DataGenerator 
+			const generatorFunction = generator.generateData.bind(generator);
+			log('generatorFunction is %o', generatorFunction);
+			const instruments = new BacktestInstruments(generatorFunction, 	true);
+
+			const parameterizedStrategyRunner = this.strategyFunction(parameterSet);
+			console.log('--------', parameterizedStrategyRunner, parameterizedStrategyRunner.onNewInstrument);
+
+			const instance = new BacktestInstance(instruments, 
+				parameterizedStrategyRunner, this.configuration);
+			await instance.run();
+			instances.push({
+				parameterSet,
+				accounts: instance.accounts,
+				positions: instance.positions,
+				instruments: instance.instruments.instruments,
+			});
+		}
+		log('Run done: %o', instances);
+
+		return instances;	
 	}
 
 }

@@ -37,7 +37,7 @@ test('does not start a new read for every time read is called', async (t) => {
 test('returns false if all data was read', async (t) => {
 	const csv = new CSVSource([path.join(__dirname, 'test*/t*.csv')]);
 	await csv.read();
-	const doneResult = csv.read();
+	const doneResult = await csv.read();
 	t.is(doneResult, false);
 });
 

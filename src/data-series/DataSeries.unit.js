@@ -110,10 +110,20 @@ test('head returns latest rows', (t) => {
 	t.deepEqual(dataSeries.head(2), [data[2], data[1]]);
 });
 
+test('head works with empty DataSeries', (t) => {
+	const dataSeries = new DataSeries();
+	t.deepEqual(dataSeries.head(), undefined);
+});
+
 test('tail returns first rows', (t) => {
 	const { dataSeries, data } = setupDataSeries();
 	t.deepEqual(dataSeries.tail(), data[0]);
 	t.deepEqual(dataSeries.tail(2), [data[0], data[1]]);	
+});
+
+test('tail works with empty DataSeries', (t) => {
+	const dataSeries = new DataSeries();
+	t.deepEqual(dataSeries.tail(), undefined);
 });
 
 test('getDataByKey returns matching data', (t) => {

@@ -10,10 +10,10 @@ function setupData() {
 				resolve();
 			}, 10);
 		});
-	}
+	};
 	const callback2 = function(data) {
 		results.push(data);
-	}
+	};
 	return { results, callback1, callback2 };
 }
 
@@ -35,7 +35,7 @@ test('throws on invalid arguments for emit', async (t) => {
 
 test('calls with correct data and awaits them', async (t) => {
 	const ee = new AwaitingEventEmitter();
-	const { results, callback1, callback2 } = setupData();
+	const { results, callback1, callback2 } = setupData();
 	ee.on('test', callback1);
 	ee.on('test', callback2);
 	const data = { isIt: true };

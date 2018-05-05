@@ -1,3 +1,8 @@
+/**
+ * Sort function for data that will be passed to DataGenerator; sorts all data chronologically.
+ * @param  {Map} a 
+ * @param  {Map} b
+ */
 export default function(a, b) {
 	if (!a.get('date') || !b.get('date')) throw new Error(`dataSortFunction: date property not 
 		available on entries.`);

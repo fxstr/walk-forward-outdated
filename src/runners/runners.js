@@ -1,5 +1,24 @@
 import runAlgorithms from './runAlgorithms';
 
+
+// As we need to share onNewInstrument (and maybe more later) on both runThrough and rejectOnFalse,
+// use a central factory function.
+function createReturnObject(algos, halt) {
+	return {
+		async onClose(...params) {
+			return await runAlgorithms(params, algos, 'onClose', !!halt);	
+		},
+		async onNewInstrument(instrument) {
+			algos.forEach((algo) => {
+				if (algo.onNewInstrument && typeof algo.onNewInstrument === 'function') {
+					algo.onNewInstrument(instrument);
+				}
+			});
+		}
+	};
+}
+
+
 /**
 * We use runThrough() as an algorithm runner which executes all algorithms or other runThrough() or
 * rejectOnFalse() functions passed. It does *not* halt if an algorithm returns false.
@@ -13,12 +32,9 @@ import runAlgorithms from './runAlgorithms';
 *									runAlgorithms() will be run with the parameters provided.
 */
 function runThrough(...algorithms) {
-	return {
-		async onClose(...params) {
-			return await runAlgorithms(params, algorithms, 'onClose');
-		}
-	};
+	return createReturnObject(algorithms);
 }
+
 
 
 /**
@@ -31,11 +47,9 @@ function runThrough(...algorithms) {
 *									runAlgorithms() will be run with the parameters provided.
 */
 function rejectOnFalse(...algorithms) {
-	return {
-		async onClose(...params) {
-			return await runAlgorithms(params, algorithms, 'onClose', true);
-		}
-	};
+	return createReturnObject(algorithms, true);
 }
+
+
 
 export { rejectOnFalse, runThrough };

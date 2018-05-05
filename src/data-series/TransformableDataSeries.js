@@ -295,8 +295,10 @@ export default class TransformableDataSeries extends DataSeries {
 		// not present, just use 'value' as the name. 
 		const keys = transformer.getKeys && typeof transformer.getKeys === 'function' ?
 			transformer.getKeys() : [this.defaultReturnValuePropertyName];
+
 		// Create a map that maps the next method's object keys to symbol; those symbols will
 		// be used to (uniquely) store the results in the TransformableDataSeries.
+		// Map is needed to map values from transformer to value on DataSeries.
 		const keyMap = new Map();
 		keys.forEach((key) => {
 			keyMap.set(key, Symbol());
@@ -309,6 +311,11 @@ export default class TransformableDataSeries extends DataSeries {
 		});
 
 		log('Add transformer %o with properties %o and keys %o', transformer, properties, keyMap);
+
+		// If default value is used as a key, return it directly
+		if (keys.length === 1 && keys[0] === this.defaultReturnValuePropertyName) {
+			return keyMap.get(this.defaultReturnValuePropertyName);
+		}
 
 		// Return the map that contains the keys to the symbols used to store the values. Do not
 		// use a map but an object to allow object destructuring:

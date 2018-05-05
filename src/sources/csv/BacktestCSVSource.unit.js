@@ -40,15 +40,13 @@ test('reads files', async (t) => {
 		[path.join(__dirname, 'backtest*/t*.csv')],
 	);
 	const result = await csv.read();
-	t.is(result.length, 2);
+	t.is(result.length, 8);
 	// 4 rows in test1
-	t.is(result[0].length, 4);
-	const firstResult = result[0][0];
-	t.is(firstResult.size, 6);
-	t.deepEqual(firstResult.get('date'), new Date('2018-01-02'));
-	t.is(firstResult.get('instrument'), 'test1');
-	t.is(firstResult.get('open'), 3);
-	t.is(firstResult.get('high'), 6);
-	t.is(firstResult.get('low'), 2);
-	t.is(firstResult.get('close'), 5);
+	const firstItem = result[0];
+	t.deepEqual(firstItem.get('date'), new Date('2018-01-02'));
+	t.is(firstItem.get('instrument'), 'test1');
+	t.is(firstItem.get('open'), 3);
+	t.is(firstItem.get('high'), 6);
+	t.is(firstItem.get('low'), 2);
+	t.is(firstItem.get('close'), 5);
 });

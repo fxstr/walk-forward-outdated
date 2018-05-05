@@ -11,7 +11,7 @@ const log = debug('WalkForward:combineParameters');
 *  { parameterA: value2, parameterB: value1 }, { parameterA: value2, parameterB: value2 }]
 * @param {Map} parameters			Parameters to combine. Key is param name, value is an array
 *									of parameter values.
-* @returns {array}
+* @returns {Map[]}
 */
 
 export default function combineParameters(parameters) {

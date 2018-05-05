@@ -38,7 +38,7 @@ export default class Optimization {
 
 	/**
 	* Generates all possible parameter combinations
-	* @returns {ParameterSet[]}		All possible parameter sets
+	* @returns {Map[]}		All possible parameter sets
 	*/
 	generateParameterSets() {
 		// Convert parameters into Maps with key: name, value: array of values

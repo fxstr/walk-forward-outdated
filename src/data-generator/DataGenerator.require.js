@@ -19,7 +19,7 @@ function setupData() {
 			readCounter.count++;
 			if (this.readCount >= this.data.length) return Promise.resolve(false);
 			return new Promise((resolve) => {
-				resolve(this.data[this.readCount]);
+				resolve([this.data[this.readCount]]);
 				this.readCount++;
 			});
 		}
@@ -36,6 +36,21 @@ test('fails with invalid arguments', (t) => {
 	t.throws(() => new DataGenerator({ read: () => {} }, ''), /Second argument/);
 	t.notThrows(() => new DataGenerator({ read: () => {} }, () => {} ), 
 		/Second argument/);
+});
+
+test('fails if generator returns something other than an array or false', async (t) => {
+	const source = new class {
+		read() {
+			return 4;
+		}
+	};
+	const dg = new DataGenerator(source);
+	try {
+		for await (const row of dg.generateData()) { row; }
+	}
+	catch(err) {
+		t.is(err.message.includes('either be an Array'), true);
+	}
 });
 
 
@@ -79,5 +94,22 @@ test('reads data by sort function passed', async (t) => {
 	// We're sorting descending; 1 will be at the end (and therefore emitted twice), before
 	// undefined goes to the end
 	t.deepEqual(result, [1, 1, undefined]);
+});
+
+
+// This is a key feature: One of the main purposes of DataGenerator is caching which only makes 
+// sense if generator can be re-used.
+test('run can be called multiple times', async (t) => {
+	const { validSource } = setupData();
+	const dg = new DataGenerator(validSource);
+	const result1 = [];
+	for await (const row of dg.generateData()) {
+		result1.push(row);
+	}
+	const result2 = [];
+	for await (const row of dg.generateData()) {
+		result2.push(row);
+	}
+	t.deepEqual(result1, result2);
 });
 

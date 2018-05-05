@@ -1,41 +1,33 @@
 import test from 'ava';
 import Backtest from './Backtest';
 import debug from 'debug';
-import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
+import createTestData from '../helpers/createTestData';
+//import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
 const log = debug('WalkForward:Backtest.require');
 
-function setupData() {
+function setupData(passedData) {
+
+	// Order is important!
+	const rawData = passedData || [
+		['aapl', 1, 3, 2],
+		['0700', 1, 2, 3],
+		['aapl', 3, 3, 4],
+	];
+	const data = createTestData(rawData);
 
 	class DataSource {
-		data = [ new Map([
-				['date', new Date(2018, 0, 3)], 
-				['instrument', 'aapl'], 
-				['open', 3],
-				['close', 4], 
-				['high', 4],
-				['low', 3],
-			]), new Map([
-				['date', new Date(2018, 0, 1)], 
-				['instrument', 'aapl'], 
-				['open', 3],
-				['close', 2], 
-				['high', 3],
-				['low', 1],
-			]), new Map([
-				['date', new Date(2018, 0, 1)], 
-				['instrument', '0700'], 
-				['open', 2],
-				['close', 3], 
-				['high', 4],
-				['low', 2]
-			]),
-		];
+		constructor() {
+			this.data = data;
+		}
 		index = 0;
 		async read() {
+			if (this.index >= this.data.length) return new Promise((resolve) => resolve(false));
 			return new Promise((resolve) => {
-				const result = this.data[this.index] || false;
+				log('Read from dataSource, index is %d', this.index);
+				if (!this.data[this.index]) resolve(false);
+				const result = this.data[this.index];
 				log('Return result %o', result);
-				resolve(result);
+				resolve([result]);
 				this.index++;
 			});
 		}
@@ -45,38 +37,85 @@ function setupData() {
 }
 
 
+
+
+
+// STRATEGIES
+
 test('accepts and stores strategies', (t) => {
 	const bt = new Backtest();
 	// Wrong argument
 	t.throws(() => bt.setStrategies('notafunction'), /function/);
 });
 
-test('cannot be run without strategies or instruments', (t) => {
+/*test('throws if onClose method is missing', async (t) => {
 	const bt = new Backtest();
-	// Run without strategy
-	t.throws(() => bt.run(), /more strategies/);
-	// Run without instruments: Throws
-	bt.setStrategies(() => {});
-	t.throws(() => bt.run(), /accessing instruments/);
-});
+	const { dataSource } = setupData();
+	bt.setDataSource(dataSource);
+	bt.setStrategies(() => {
+		return {
+			onClose: 'notAFunction',
+		};
+	});
+	const err = await t.throws(bt.run());
+	t.is(err.message.includes('no onClosed'), true);
+});*/
 
-test('runs strategies after they were added with corret arguments', async (t) => {
+
+test('strategies are called with paramSets if optimizations are set', async (t) => {
 	const bt = new Backtest();
 	const { dataSource } = setupData();
 	const args = [];
 	bt.setDataSource(dataSource);
-	bt.setStrategies((params, instruments) => {
-		args.push([params, instruments]);
+	bt.addOptimization('name', [1, 4], 3);
+	bt.setStrategies((...params) => {
+		args.push(params);
+		return {
+			onClose: () => []
+		};
+	});
+	t.is(args.length, 0);
+	await bt.run();
+	t.is(args.length, 3);
+});
+
+test('strategies are called with undefined if optimizations are missing', async (t) => {
+	const bt = new Backtest();
+	const { dataSource } = setupData();
+	const args = [];
+	bt.setDataSource(dataSource);
+	bt.setStrategies((...params) => {
+		args.push(params);
+		return {
+			onClose: () => []
+		};
 	});
 	t.is(args.length, 0);
 	await bt.run();
 	t.is(args.length, 1);
-	t.deepEqual(args[0][0], {});
-	t.is(args[0][1] instanceof BacktestInstruments, true);
+	t.deepEqual(args[0][0], undefined);
 });
 
 
-test('handles bad and good data sources', (t) => {
+
+
+// OPTIMIZATIONS
+test('adds optimizations', (t) => {
+	const bt = new Backtest();
+	bt.addOptimization('name', [1, 4], 3);
+	// Just one param set with 3 param values
+	t.is(bt.optimization.generateParameterSets().length, 3);
+});
+
+
+
+
+
+
+
+// DATA SOURCES and INSTRUMENTS
+
+test('validates and stores data sources', (t) => {
 	const { dataSource } = setupData();
 	const bt = new Backtest();
 	t.throws(() => bt.setDataSource(), /method/);
@@ -88,39 +127,152 @@ test('handles bad and good data sources', (t) => {
 	t.is(bt.dataSource, dataSource);
 });
 
-test('fails if accessing getInstruments too early', (t) => {
-	const bt = new Backtest();
-	t.throws(() => bt.getInstruments(), /setDataSource\(source\)/);
-});
 
-test.skip('getInstruments returns an emitter, calls handlers and awaits execution', async (t) => {
+/*test('fails if accessing createInstruments too early', (t) => {
+	const bt = new Backtest();
+	t.throws(() => bt.createInstruments(), /setDataSource\(source\)/);
+});*/
+
+/*test('createInstruments returns emitter, calls handlers and awaits execution', async (t) => {
 	const { dataSource } = setupData();
 	const bt = new Backtest();
 	bt.setDataSource(dataSource);
-	const instruments = bt.getInstruments();
+	const instruments = bt.createInstruments();
 	const addedInstruments = [];
 	const addedData = [];
 	instruments.on('newInstrument', (...data) => {
 		log('Instrument %o', data);
 		addedInstruments.push(data);
 	});
-	instruments.on('data', (...data) => {
+	instruments.on('open', (...data) => {
 		log('Data %o', data);
 		addedData.push(data);
 	});
 	await instruments.run();
-	/*t.is(addedInstruments.length, 2);
+	t.is(addedInstruments.length, 2);
 	t.is(addedData.length, 3);
-	t.is(addedData[0], {});*/
-	t.pass();
+});*/
+
+
+
+
+
+
+// CONFIGURATION
+
+ test('fails if invalid configurations are provided', (t) => {
+	const bt = new Backtest();
+	// Not a map
+	t.throws(() => bt.setConfiguration('notAMap'), /must be a Map/);
+	// Not a function
+	t.throws(() => bt.setConfiguration(new Map([
+		['cash', 1000],
+	])), /function, is number/);
+	// Valid
+	t.notThrows(() => bt.setConfiguration(new Map([
+		['cash', () => 1000],
+	])));
+	// Valid (with invalid keys)
+	t.notThrows(() => bt.setConfiguration(new Map([
+		['cash', () => 1000],
+		['invalidKey', 'invalidProperty']
+	])));
 });
 
-test.skip('awaits execution of handlers', (t) => {	
-	t.pass();
+test('stores a valid config', (t) => {
+	// Valid (with invalid keys)
+	const bt = new Backtest();
+	bt.setConfiguration(new Map([
+		['cash', () => 1000],
+		['invalidKey', 'invalidProperty']
+	]));
+	// Only cash is stored
+	t.is(bt.configuration.size, 1);
+	t.is(bt.configuration.has('cash'), true);
+	t.is(typeof bt.configuration.get('cash'), 'function');
+	t.is(bt.configuration.get('cash')(), 1000);
 });
 
-test.skip('getInstruments never returns the same emitter', (t) => {	
-	t.pass();
+test('config: handles empty values correctly', (t) => {
+	const bt = new Backtest();
+	bt.setConfiguration(new Map([]));
+	t.is(bt.configuration.get('cash')(), 100000);
 });
+
+test('config: cash defaults to 100k', (t) => {
+	const bt = new Backtest();
+	bt.setConfiguration(new Map([]));
+	t.is(bt.configuration.get('cash')(), 100000);
+});
+
+
+
+
+// RUN
+
+test('cannot be run without strategies or instruments', async (t) => {
+	const bt = new Backtest();
+	// Run without strategy
+	const err1 = await t.throws(bt.run());
+	t.is(err1.message.includes('Use the setStrategies'), true);
+	bt.setStrategies(() => { 
+		return {
+			onClose: () => { return []; }
+		};
+	});
+	// Run without instruments: Throws
+	const err2 = await t.throws(bt.run());
+	const { dataSource } = setupData();
+	bt.setDataSource(dataSource);
+	t.is(err2.message.includes('Use setDataSource'), true);
+	await t.notThrows(() => bt.run());
+});
+
+
+
+
+
+
+/*test('runs a real backtest', async (t) => {
+	const bt = new Backtest();
+	const { dataSource } = setupData([
+		['aapl', 2, 3, 5],
+		['0700', 2, 2, 4],
+		['aapl', 3, 4, 6],
+		['0700', 3, 3, 6],
+		['aapl', 4, 4, 6],
+		['0700', 4, 3, 4],
+		['aapl', 5, 4, 7],
+		['0700', 5, 4, 5],
+	]);
+	bt.setDataSource(dataSource);
+	// It's important to test multiple parameters here as this creates new problems (e.g.
+	// multiple BacktestInstruments that use the same DataGenerator)
+	bt.addOptimization('name', [1, 2], 2);
+	bt.setStrategies((params) => {
+		return {
+			onClose: function(orders, instrument) { 
+				// Buy y of instrument if date % x is 0 (x is 1 or 2 depending on param)
+				// y is date or date * -1 every 2nd time
+				const date = instrument.head().get('date').getDate();
+				const param = Math.round(params.get('name'));
+				if (date % param === 0) {
+					const size = date % (param * 2) === 0 ? date : date * -1;
+					const order = [...orders, { instrument: instrument, size }];
+					return order;
+				}
+				return []; 
+			}
+		};
+	});
+	const instances = await bt.run();
+	t.is(instances.length, 2);
+	t.is(instances[0].parameterSet.get('name').toFixed(2), (1).toFixed(2));
+	t.is(instances[0].accounts.head().get('cash'), 99977);
+	t.is(instances[1].accounts.head().get('cash'), 99986);
+});
+*/
+
+
 
 

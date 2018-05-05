@@ -42,3 +42,19 @@ test('runThrough and rejectOnFalse be chained', async (t) => {
 	t.deepEqual(base, {});
 	t.deepEqual(finalResult, {test1: 4, test2: 4});	
 });
+
+test('invokes onNewInstrument if present', async (t) => {
+	const instruments = [];
+	class WithNewInstrument {
+		onClose() {}
+		onNewInstrument(instrument) {
+			instruments.push(instrument);
+		}
+	}
+	const runner = runThrough(new WithNewInstrument());
+	const haltRunner = rejectOnFalse(new WithNewInstrument());
+	await runner.onNewInstrument();
+	await haltRunner.onNewInstrument();
+	t.is(instruments.length, 2);
+});
+

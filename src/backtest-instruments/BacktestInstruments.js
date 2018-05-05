@@ -61,10 +61,12 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 		log('run method called, generatorFunction is %o', this.generatorFunction);
 		for await (const data of this.generatorFunction()) {
 
+			log('Generated data is %o', data);
+
 			if (!(data instanceof Map)) throw new Error(`BacktestInstruments: data returned by 
 				generatorFunction must be a map, is ${ data }.`);
 
-			log('Data is %o, backtest mode %o', data, this.backtestMode);
+			log('New data from generatorFunction is %o, backtest mode %o', data, this.backtestMode);
 
 			// Is date property missing or not a valid date?
 			// https://stackoverflow.com/questions/1353684/detecting-an-invalid-date-date-instance-
@@ -98,11 +100,12 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 				await this.emitOpenEvent(data);
 				await this.emitAfterOpenEvent([data]);
 				await this.emitCloseEvent(data);
+				await this.emitAfterCloseEvent([data]);
 			}
 		}
 		// If we're in backtestMode and on a non-continuous data source (e.g. a CSV, but not a 
 		// continuously pulling web service), clear all data that's stored in dataOfSameInterval. 
-		// Why? Because we only clear dataOfSameInterval as soon as the date changes – and that
+		// Why? Because we only clear dataOfSameInterval as soon as the date changes – and that
 		// does not happen for the very last entries.
 		if (this.backtestMode) await this.clearDataOfSameInterval();
 	}
@@ -113,30 +116,27 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 	* @private
 	*/
 	async clearDataOfSameInterval() {
+		// There's no need to clean data if there is no data on the latest interval; this may happen
+		// on the last tick if we're running in backtestMode
+		if (!this.dataOfSameInterval.length) return;
 		// First emit all open events, only then emit all close events
 		for (const data of this.dataOfSameInterval) {
 			await this.emitOpenEvent(data);
 		}
-		this.emitAfterOpenEvent(this.dataOfSameInterval);
+		await this.emitAfterOpenEvent(this.dataOfSameInterval);
 		for (const data of this.dataOfSameInterval) {
 			await this.emitCloseEvent(data);
 		}
+		await this.emitAfterCloseEvent(this.dataOfSameInterval);
 		this.dataOfSameInterval = [];
 	}
 
 
 	/**
-	* afterOpen event
-	* 
-	* @event afterOpen
-	* @param {object} data					All instruments for which open events were fired
-	*/
-
-	/**
 	* Emits afterOpen event after all open events were fired: 
 	* - one single event for all current open events if we're in backtest mode
 	* - one event after every open event if we're not in backtest mode
-	* @param {array} data		All data (from this.dataOfSameInterval) that was previous
+	* @param {array} data		All data (from this.dataOfSameInterval) that was previously opened
 	* @emits afterOpen
 	* @private
 	*/
@@ -147,6 +147,18 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 		await this.emit('afterOpen', instruments);
 	}
 
+	/**
+	* Emits afterClose event after all close events were fired.
+	* @param {array} data		All data (from this.dataOfSameInterval) that was previously closed
+	* @emits afterClose
+	* @private
+	*/
+	async emitAfterCloseEvent(data) {
+		// Only emit *one* afterClose event for all closed instruments. Why? Because on 
+		// afterClose we calculate all accounts' close values
+		const instruments = data.map((item) => this.getOrCreateInstrument(item.get('instrument')));
+		await this.emit('afterClose', instruments);
+	}
 
 	/**
 	* Prepares and emits an open event
@@ -230,6 +242,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 		const found = this.instruments.find((instrument) => instrument.name === name);
 		if (found) return found;
 		else {
+			log('Create new instrument %o, emit newInstrument', name);
 			const instrument = new Instrument(name);
 			this.instruments.push(instrument);
 			this.emit('newInstrument', instrument);

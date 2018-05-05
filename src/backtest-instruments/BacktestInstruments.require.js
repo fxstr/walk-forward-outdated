@@ -200,14 +200,33 @@ test('regular (non-backtest) mode has the right events and order', async (t) => 
 	bi.on('close', (data) => {
 		eventOrder.push('close-' + data.instrument.name);
 	});
+	bi.on('afterClose', (data) => {
+		// data is an array of instruments
+		eventOrder.push('afterClose-' + data[0].name);
+	});
 	bi.on('afterOpen', (data) => {
 		// data is an array of instruments
 		eventOrder.push('afterOpen-' + data[0].name);
-	})
+	});
 	await bi.run();
-	t.deepEqual(eventOrder, ['open-aapl', 'afterOpen-aapl', 'close-aapl', 'open-0700', 
-		'afterOpen-0700', 'close-0700', 'open-aapl', 'afterOpen-aapl', 'close-aapl', 'open-aapl', 
-		'afterOpen-aapl', 'close-aapl']);
+	t.deepEqual(eventOrder, [
+		'open-aapl', 
+		'afterOpen-aapl', 
+		'close-aapl', 
+		'afterClose-aapl',
+		'open-0700', 
+		'afterOpen-0700', 
+		'close-0700', 
+		'afterClose-0700',
+		'open-aapl', 
+		'afterOpen-aapl', 
+		'close-aapl', 
+		'afterClose-aapl',
+		'open-aapl', 
+		'afterOpen-aapl', 
+		'close-aapl',
+		'afterClose-aapl',
+	]);
 });
 
 test('backtestMode fires events for all (even the last) generated data', async (t) => {
@@ -216,12 +235,27 @@ test('backtestMode fires events for all (even the last) generated data', async (
 	const { generatorFunction } = setupData();
 	const bi = new BacktestInstruments(generatorFunction, true);
 	let instrumentsClosed = 0;
-	bi.on('close', (data) => {
+	bi.on('close', () => {
 		instrumentsClosed++;
 	});
 	await bi.run();
 	t.is(instrumentsClosed, 4);
 });
+
+
+test('backtestMode fires events for all (even the last) generated data', async (t) => {
+	// Last instrument does not fire within the for-of-loop but just afterwards (because date does
+	// not change)
+	const { generatorFunction } = setupData();
+	const bi = new BacktestInstruments(generatorFunction, true);
+	let instrumentsClosed = 0;
+	bi.on('close', () => {
+		instrumentsClosed++;
+	});
+	await bi.run();
+	t.is(instrumentsClosed, 4);
+});
+
 
 test('backtestMode has the right events and order', async (t) => {
 	const { generatorFunction } = setupData();
@@ -233,17 +267,35 @@ test('backtestMode has the right events and order', async (t) => {
 	bi.on('close', (data) => {
 		eventOrder.push('close-' + data.instrument.name);
 	});
+	bi.on('afterClose', (data) => {
+		// Data is an array of instruments
+		const instruments = data.map((item) => item.name).join('-');
+		eventOrder.push('afterClose-' + instruments);
+	});
 	bi.on('afterOpen', (data) => {
 		// Data is an array of instruments
 		const instruments = data.map((item) => item.name).join('-');
 		eventOrder.push('afterOpen-' + instruments);
-	})
+	});
 	await bi.run();
 	// Latest data set does not emit an event, as we don't yet know if the date has changed 
 	// (or if we're at the end as we might be using a continuous stream).
-	t.deepEqual(eventOrder, ['open-aapl', 'open-0700', 'afterOpen-aapl-0700', 'close-aapl', 
-		'close-0700', 'open-aapl', 'afterOpen-aapl', 'close-aapl', 'open-aapl', 'afterOpen-aapl', 
-		'close-aapl']);	
+	t.deepEqual(eventOrder, [
+		'open-aapl', 
+		'open-0700', 
+		'afterOpen-aapl-0700', 
+		'close-aapl', 
+		'close-0700', 
+		'afterClose-aapl-0700', 
+		'open-aapl', 
+		'afterOpen-aapl', 
+		'close-aapl',
+		'afterClose-aapl',  
+		'open-aapl', 
+		'afterOpen-aapl', 
+		'close-aapl',
+		'afterClose-aapl',  
+	]);	
 });
 
 

@@ -2,21 +2,17 @@ import debug from 'debug';
 const log = debug('WalkForward:DataGenerator');
 
 /**
+* Does two things: 
+* - Wraps our sources into a generator
+* - Caches entries and therefore reduces I/O operations (if we run backtest with multiple params)
+*
 * We cache our data (see DataCache); this async generator merges cached and new data into one
 * async iterator and therefore hides implementation details (caching, kind of source).
 *
-* Cache must contain a data property which is an array. 
 * Source must have a read method which returns a promise; the promise must resolve to false if
-* there is no data available any more.
+* there is no data available any more, else to a single entry, sorted chronologically.
 */
 export default class DataGenerator {
-
-	/**
-	* Read from cache as long as entries exist; this is the index of the current cache
-	* entry.
-	* @private
-	*/
-	currentCacheEntry = 0;
 
 	/**
 	* Simple cache that prevents us from calling the original source every time the backtest
@@ -36,7 +32,7 @@ export default class DataGenerator {
 				sort function; if you pass a second argument, make sure it's a function.`);
 		}
 
-		log('Initialize with source %o and sorFunction %o', source, sortFunction);
+		log('Initialize with source %o. Sort function? %o', source, !!sortFunction);
 		this.source = source;
 		this.sortFunction = sortFunction;
 
@@ -50,18 +46,26 @@ export default class DataGenerator {
 
 		log('generateData called');
 
+		// Scope of index must be the function, not the instance if run() method should be 
+		// callable multiple times (which it needs to be in order to run a backtest with multiple
+		// parameter sets)
+		let currentIndex = 0;
+
 		while(true) {
 
 			// Read from cache as long as we have a next entry; if cache is empty, we make a call
 			// to source.read() which fills up the cache. Never return a record directly from the 
 			// source.
-			if (this.cache.length > this.currentCacheEntry) {
-				log('Take data from cache, index is %d', this.currentCacheEntry);
+			if (this.cache.length > currentIndex) {
+				log('Take data from cache with length %d, index is %d. Sort? %o', this.cache.length, 
+					currentIndex, !!this.sortFunction);
 				const sorted = this.sortFunction ? 
 					this.cache.slice(0).sort(this.sortFunction) :
 					this.cache;
-				yield sorted[this.currentCacheEntry];
-				this.currentCacheEntry++;
+				const nextEntry = sorted[currentIndex];
+				log('Return entry %o', nextEntry);
+				yield nextEntry;
+				currentIndex++;
 			}
 
 			// Cache is empty: Try to read next lines from the source. If source returns, continue
@@ -69,9 +73,14 @@ export default class DataGenerator {
 			else {
 				log('Source has no more data; try to read');
 				const nextData = await this.source.read();
-				log('Got data %o', nextData);
+				log('Got data from read: %o', nextData);
+
+				// We expect an array (one or multiple entries) or false!
 				if (nextData !== false) {
-					this.cache.push(nextData);
+					if (!Array.isArray(nextData)) throw new Error(`DataGenerator: Data returned
+						by read function of your data source must either be an Array or false, 
+						currently is ${ nextData }.`);
+					this.cache.push(...nextData);
 					log('Add data %o to cache to later read from', nextData);
 					continue;
 				} else {

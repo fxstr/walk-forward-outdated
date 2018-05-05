@@ -47,16 +47,17 @@ export default class CSVSource {
 		// If we're already reading, don't start a new read, just return the existing promise.
 		// This is especially important as multiple read calls might be made if we optimize
 		// a backtest with different variables (one call per run might be made).
-		if (this.allRead) return false;
+		if (this.allRead) return Promise.resolve(false);
 		if (this.readPromise) return this.readPromise;
 		this.readPromise = new Promise((resolve, reject) => {
 			this.readInternally().then((result) => {
-				log('result', result);
+				log('Read internally, result is', result);
 				this.allRead = true;
 				this.readPromise = undefined;
 				resolve(result);
 			}, reject);
 		});
+		log('Reading files, return promise');
 		return this.readPromise;
 	}
 

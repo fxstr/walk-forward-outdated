@@ -12,7 +12,7 @@ test('add returns promise', async (t) => {
 	await promise;
 });
 
-test('does not change original data', async (t) => {
+test('does not change original data on add data', async (t) => {
 	const ds = new TransformableDataSeries();
 	const data = { col: 'value' };
 	const originalData = { ...data };
@@ -31,7 +31,7 @@ test('set returns a promise', async (t) => {
 	await promise;
 });
 
-test('does not change original data', async (t) => {
+test('does not change original data on set data', async (t) => {
 	const ds = new TransformableDataSeries();
 	ds.add(1, { col: 'value1' });
 	const data = { newCol: 'value2' };
@@ -204,7 +204,7 @@ test('executes a transformer without dependencies before data is added', async (
 test('works with transformers that return a single value', async (t) => {
 	const { AdditionTransformer } = generateTransformers();
 	const ds = new TransformableDataSeries();
-	const { value } = ds.addTransformer(['open'], new AdditionTransformer(5));
+	const value = ds.addTransformer(['open'], new AdditionTransformer(5));
 	await ds.add(1, { open: 2, close: 3 });
 	t.is(ds.data.length, 1);
 	t.is(ds.head().get(value), 7);
@@ -225,10 +225,10 @@ test('works with transformers that return an map', async (t) => {
 test('multiple transformers work in the expected order', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { AsyncAdditionTransformer, AdditionTransformer } = generateTransformers();
-	const firstKey = ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 10)).value;
-	const secondKey = ds.addTransformer([firstKey], new AsyncAdditionTransformer(5, 20)).value;
-	const thirdKey = ds.addTransformer([secondKey], new AdditionTransformer(2)).value;
-	const fourthKey = ds.addTransformer(['open'], new AdditionTransformer(7)).value;
+	const firstKey = ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 10));
+	const secondKey = ds.addTransformer([firstKey], new AsyncAdditionTransformer(5, 20));
+	const thirdKey = ds.addTransformer([secondKey], new AdditionTransformer(2));
+	const fourthKey = ds.addTransformer(['open'], new AdditionTransformer(7));
 	await ds.add(1, { open: 2, close: 3 });
 	t.is(ds.data.length, 1);
 	t.is(ds.head().get(firstKey), 7);
@@ -241,7 +241,7 @@ test('multiple transformers work in the expected order', async (t) => {
 test('works with multiple input values', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { MultipleIntoOneTransformer } = generateTransformers();
-	const { value } = ds.addTransformer(['open', 'close', 'high'], 
+	const value = ds.addTransformer(['open', 'close', 'high'], 
 		new MultipleIntoOneTransformer());
 	await ds.add(1, { open: 3, high: 6, low: 1, close: 2 });
 	t.is(ds.head().get(value), '326');
@@ -283,8 +283,8 @@ test('has helpful error messages if next() returns too many keys', async (t) => 
 test('transformers are called on set and add', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { AdditionTransformer } = generateTransformers();
-	const addKey = ds.addTransformer(['add'], new AdditionTransformer(3)).value;
-	const setKey = ds.addTransformer(['set'], new AdditionTransformer(3)).value;
+	const addKey = ds.addTransformer(['add'], new AdditionTransformer(3));
+	const setKey = ds.addTransformer(['set'], new AdditionTransformer(3));
 	await ds.add(1, { add: 2 });
 	t.is(ds.head().get(addKey), 5);
 	await ds.set({ 'set': 5 });
@@ -295,8 +295,8 @@ test('transformers are called on set and add', async (t) => {
 test('works with multiple rows (nested/dependent transformers)', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { AsyncAdditionTransformer } = generateTransformers();
-	const key1 = ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 20)).value;
-	const key2 = ds.addTransformer([key1], new AsyncAdditionTransformer(3, 10)).value;
+	const key1 = ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 20));
+	const key2 = ds.addTransformer([key1], new AsyncAdditionTransformer(3, 10));
 	await ds.add(1, { open: 2 });
 	t.is(ds.head().get(key2), 10);
 	await (ds.add(2, { open: 3 }));

@@ -2,6 +2,6 @@ import test from 'ava';
 import { SMA } from './indicators';
 import origSMA from './SMA';
 
-test('', (t) => {
+test('exports are correct', (t) => {
 	t.is(SMA, origSMA);
 });

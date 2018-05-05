@@ -12,6 +12,7 @@ async function getPathsFromSpecs(specs) {
 	return Promise.all(specs.map((spec) => {
 		return getPathsFromSpec(spec);
 	})).then((paths) => {
+		log('Got paths %o', paths);
 		// paths is an array that consists of multiple arrays; flatten it
 		return paths.reduce((prev, item) => prev.concat(item), []);
 	});

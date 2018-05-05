@@ -8,12 +8,12 @@
 *										passed
 */
 export default function mergeOrders(orders) {
-	const mapped = orders.reduce((prev, order) => {
-		// Instrument does not exist in map: set it
-		if (!prev.has(order.instrument)) prev.set(order.instrument, order);
-		// Instrument exists in map: just update the size
-		else prev.get(order.instrument).size += order.size;
+	const merged = orders.reduce((prev, order) => {
+		prev.set(order.instrument, {
+			instrument: order.instrument,
+			size: (prev.has(order.instrument) && prev.get(order.instrument).size || 0) + order.size,
+		});
 		return prev;
 	}, new Map());
-	return Array.from(mapped.values());
+	return Array.from(merged.values());
 }

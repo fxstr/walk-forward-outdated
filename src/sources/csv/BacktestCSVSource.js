@@ -26,8 +26,15 @@ export default class BacktestCSVSource extends CSVSource {
 	*/
 	async read(...args) {
 		// https://github.com/babel/babel/issues/3930 (no super() on async methods)
+		log('Read files %s', this.pathSpecs.join(', '));
 		return CSVSource.prototype.read.apply(this, args).then((result) => {
-			return result.map((fileContent) => this.formatFile(fileContent));
+			if (result === false) return false;
+			const formatted = result.map((fileContent) => this.formatFile(fileContent));
+			// Flatten array – content of all files goes into one single array (as needed by
+			// DataGenerator)
+			const flattened = formatted.reduce((prev, item) => prev.concat(item), []);
+			log('Formatted and flattened content returned by read is %o', flattened);
+			return flattened;
 		});
 	}
 
@@ -36,7 +43,7 @@ export default class BacktestCSVSource extends CSVSource {
 	*/
 	formatFile(fileContent) {
 		const instrument = this.instrumentNameFunction(fileContent.file);
-		log('Instrument is %s', instrument);
+		log('Get instrument name for file %s, is %s', fileContent.file, instrument);
 		return fileContent.content.map((rowContent) => {
 			return this.formatRow(rowContent, instrument);
 		});

@@ -7,7 +7,7 @@ import TransformableDataSeries from './TransformableDataSeries';
 
 test('add returns promise', async (t) => {
 	const ds = new TransformableDataSeries();
-	const promise = ds.add(1, { col: 'value' });
+	const promise = ds.add({ col: 'value' });
 	t.is(promise instanceof Promise, true);
 	await promise;
 });
@@ -16,7 +16,7 @@ test('does not change original data on add data', async (t) => {
 	const ds = new TransformableDataSeries();
 	const data = { col: 'value' };
 	const originalData = { ...data };
-	await ds.add(1, data);
+	await ds.add(data);
 	t.deepEqual(originalData, data);
 });
 
@@ -25,7 +25,7 @@ test('does not change original data on add data', async (t) => {
 
 test('set returns a promise', async (t) => {
 	const ds = new TransformableDataSeries();
-	ds.add(1, { col: 'value1' });
+	ds.add({ col: 'value1' });
 	const promise = ds.set({ newCol: 'value2' });
 	t.is(promise instanceof Promise, true);
 	await promise;
@@ -33,7 +33,7 @@ test('set returns a promise', async (t) => {
 
 test('does not change original data on set data', async (t) => {
 	const ds = new TransformableDataSeries();
-	ds.add(1, { col: 'value1' });
+	ds.add({ col: 'value1' });
 	const data = { newCol: 'value2' };
 	const originalData = { ...data };
 	await ds.set(data);
@@ -61,7 +61,7 @@ test('addTransformer: fails if transformer is not an object of next method is mi
 	t.throws(() => ds.addTransformer(new BadTransformer()));
 });
 
-test('addTransformer adds transformer and returns a map with symbols', (t) => {
+/*test('addTransformer adds transformer and returns a map with symbols', (t) => {
 	const ds = new TransformableDataSeries();
 	class GoodTransformer {
 		next() {
@@ -75,7 +75,7 @@ test('addTransformer adds transformer and returns a map with symbols', (t) => {
 	t.deepEqual(ds.transformers[0].properties, []);
 	t.is(ds.transformers[0].transformer, goodInstance);
 	t.is(typeof ds.transformers[0].keys.get('value'), 'symbol');
-});
+});*/
 
 
 
@@ -89,7 +89,7 @@ test ('allPropertiesAvailable fails if no rows are available', (t) => {
 
 test('allPropertiesAvailable fails if something else than an array is passed', (t) => {
 	const ds = new TransformableDataSeries();
-	ds.add(1, { col1: 'val1' });
+	ds.add({ col1: 'val1' });
 	t.throws(() => ds.allPropertiesAvailable('test'), /array/);
 });
 
@@ -102,7 +102,7 @@ test('allPropertiesAvailable returns correct values', async (t) => {
 		['col2', 'val2'],
 		[sym, 'val3'],
 	]);
-	await ds.add(1, data1);
+	await ds.add(data1);
 	t.is(ds.allPropertiesAvailable(['test']), false);
 	t.is(ds.allPropertiesAvailable([sym, 'test']), false);
 	const result = ['val3', 'val1'];
@@ -149,9 +149,6 @@ function generateTransformers() {
 				return prev;
 			}, new Map());
 		}
-		getKeys() {
-			return this.summands.map((summand) => 'add' + summand);
-		}
 	}
 	// Adds up all passed dependencies into one value (string!)
 	class MultipleIntoOneTransformer {
@@ -178,8 +175,8 @@ test('calls transformer\'s next method with correct parameters', async (t) => {
 		}
 	}
 	ds.addTransformer(['open', 'close'], new Transformer());
-	await ds.add(1, { open: 2, close: 4 });
-	await ds.add(1, { close: 5, open: 3 });
+	await ds.add({ open: 2, close: 4 });
+	await ds.add({ close: 5, open: 3 });
 	// Called once per row
 	t.deepEqual(allParams, [[[2, 4]], [[3, 5]]]);
 });
@@ -196,7 +193,7 @@ test('executes a transformer without dependencies before data is added', async (
 		}
 	}
 	ds.addTransformer([], new Transformer());
-	await ds.add(1, { open: 2 });
+	await ds.add({ open: 2 });
 	t.is(ds.head().size, 2);
 });
 
@@ -204,8 +201,9 @@ test('executes a transformer without dependencies before data is added', async (
 test('works with transformers that return a single value', async (t) => {
 	const { AdditionTransformer } = generateTransformers();
 	const ds = new TransformableDataSeries();
-	const value = ds.addTransformer(['open'], new AdditionTransformer(5));
-	await ds.add(1, { open: 2, close: 3 });
+	const value = Symbol();
+	ds.addTransformer(['open'], new AdditionTransformer(5), value);
+	await ds.add({ open: 2, close: 3 });
 	t.is(ds.data.length, 1);
 	t.is(ds.head().get(value), 7);
 });
@@ -214,8 +212,13 @@ test('works with transformers that return a single value', async (t) => {
 test('works with transformers that return an map', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { MultiAdditionTransformer } = generateTransformers();
-	const keys = ds.addTransformer(['open'], new MultiAdditionTransformer([1, 2, 3]));
-	await ds.add(1, { open: 3 });
+	const keys = {
+		add1: Symbol(),
+		add2: Symbol(),
+		add3: Symbol(),
+	};
+	ds.addTransformer(['open'], new MultiAdditionTransformer([1, 2, 3]), keys);
+	await ds.add({ open: 3 });
 	t.is(ds.head().get(keys.add1), 4);
 	t.is(ds.head().get(keys.add2), 5);
 	t.is(ds.head().get(keys.add3), 6);
@@ -225,11 +228,15 @@ test('works with transformers that return an map', async (t) => {
 test('multiple transformers work in the expected order', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { AsyncAdditionTransformer, AdditionTransformer } = generateTransformers();
-	const firstKey = ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 10));
-	const secondKey = ds.addTransformer([firstKey], new AsyncAdditionTransformer(5, 20));
-	const thirdKey = ds.addTransformer([secondKey], new AdditionTransformer(2));
-	const fourthKey = ds.addTransformer(['open'], new AdditionTransformer(7));
-	await ds.add(1, { open: 2, close: 3 });
+	const firstKey = Symbol();
+	const secondKey = Symbol();
+	const thirdKey = Symbol();
+	const fourthKey = Symbol();
+	ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 10), firstKey);
+	ds.addTransformer([firstKey], new AsyncAdditionTransformer(5, 20), secondKey);
+	ds.addTransformer([secondKey], new AdditionTransformer(2), thirdKey);
+	ds.addTransformer(['open'], new AdditionTransformer(7), fourthKey);
+	await ds.add({ open: 2, close: 3 });
 	t.is(ds.data.length, 1);
 	t.is(ds.head().get(firstKey), 7);
 	t.is(ds.head().get(secondKey), 12);
@@ -243,12 +250,12 @@ test('works with multiple input values', async (t) => {
 	const { MultipleIntoOneTransformer } = generateTransformers();
 	const value = ds.addTransformer(['open', 'close', 'high'], 
 		new MultipleIntoOneTransformer());
-	await ds.add(1, { open: 3, high: 6, low: 1, close: 2 });
+	await ds.add({ open: 3, high: 6, low: 1, close: 2 });
 	t.is(ds.head().get(value), '326');
 });
 
 
-test('has helpful error messages if getKeys() returns too many keys', async (t) => {
+/*test('has helpful error messages if getKeys() returns too many keys', async (t) => {
 	class TooManyKeys {
 		next() {
 			return new Map([['a', 1]]);
@@ -259,48 +266,46 @@ test('has helpful error messages if getKeys() returns too many keys', async (t) 
 	}
 	const ds = new TransformableDataSeries();
 	ds.addTransformer(['open'], new TooManyKeys());
-	const err = await t.throws(ds.add(1, { open: 4 }));
+	const err = await t.throws(ds.add({ open: 4 }));
 	t.is(err.message.indexOf('is not part of the object') > -1, true);
-});
+});*/
 
-
-test('has helpful error messages if next() returns too many keys', async (t) => {
-	class NotAllKeys {
+test('fails if not all keys were provided', async (t) => {
+	class TooManyKeys {
 		next() {
-			return new Map([['a', 1], ['b', 2]]);
-		}
-		getKeys() {
-			return ['a'];
+			return new Map([['a', 1]]);
 		}
 	}
 	const ds = new TransformableDataSeries();
-	ds.addTransformer(['open'], new NotAllKeys());
-	const err = await t.throws(ds.add(1, { open: 4 }));
-	t.is(err.message.indexOf('was not announced by getKeys') > -1, true);
+	ds.addTransformer(['open'], new TooManyKeys(), { b: Symbol() });
+	const err = await t.throws(ds.add({ open: 4 }));
+	t.is(err.message.includes('did not specify a key for a'), true);
 });
 
 
 test('transformers are called on set and add', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { AdditionTransformer } = generateTransformers();
-	const addKey = ds.addTransformer(['add'], new AdditionTransformer(3));
-	const setKey = ds.addTransformer(['set'], new AdditionTransformer(3));
-	await ds.add(1, { add: 2 });
-	t.is(ds.head().get(addKey), 5);
+	ds.addTransformer(['add'], new AdditionTransformer(3), 'aAdd');
+	ds.addTransformer(['set'], new AdditionTransformer(3), 'aSet');
+	await ds.add({ add: 2 });
+	t.is(ds.head().get('aAdd'), 5);
 	await ds.set({ 'set': 5 });
-	t.is(ds.head().get(setKey), 8);
+	t.is(ds.head().get('aSet'), 8);
 });
 
 
 test('works with multiple rows (nested/dependent transformers)', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { AsyncAdditionTransformer } = generateTransformers();
-	const key1 = ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 20));
-	const key2 = ds.addTransformer([key1], new AsyncAdditionTransformer(3, 10));
-	await ds.add(1, { open: 2 });
+	const key1 = Symbol();
+	const key2 = Symbol();
+	ds.addTransformer(['open'], new AsyncAdditionTransformer(5, 20), key1);
+	ds.addTransformer([key1], new AsyncAdditionTransformer(3, 10), key2);
+	await ds.add({ open: 2 });
 	t.is(ds.head().get(key2), 10);
-	await (ds.add(2, { open: 3 }));
-	await (ds.add(2, { open: 5 }));
+	await (ds.add({ open: 3 }));
+	await (ds.add({ open: 5 }));
 	t.is(ds.head().get(key2), 13);
 });
 

@@ -1,21 +1,35 @@
 import runAlgorithms from './runAlgorithms';
 
 
-// As we need to share onNewInstrument (and maybe more later) on both runThrough and rejectOnFalse,
-// use a central factory function.
+/**
+ * As we need to share onNewInstrument (and maybe more later) on both runThrough and rejectOnFalse,
+ * use a central factory function.
+ */
 function createReturnObject(algos, halt) {
 	return {
 		async onClose(...params) {
 			return await runAlgorithms(params, algos, 'onClose', !!halt);	
 		},
-		async onNewInstrument(instrument) {
-			algos.forEach((algo) => {
-				if (algo.onNewInstrument && typeof algo.onNewInstrument === 'function') {
-					algo.onNewInstrument(instrument);
-				}
-			});
+		setBacktest(backtest) {
+			callFunction(algos, 'setBacktest', [backtest]);
 		}
 	};
+}
+
+
+/**
+ * When some functions are called, we need to pass them to all child runners of the current runner
+ * function. To do so, we have to check if the child runner has the function and then call it.
+ * @param  {array} algos         Algorithms to call
+ * @param  {string} functionName Function to check and call
+ * @param  {array} params        Parameters to call algo[functionName] with
+ */
+function callFunction(algos, functionName, params) {
+	algos.forEach((algo) => {
+		if (algo[functionName] && typeof algo[functionName] === 'function') {
+			algo[functionName](...params);
+		}
+	});
 }
 
 

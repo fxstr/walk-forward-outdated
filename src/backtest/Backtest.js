@@ -1,10 +1,11 @@
-import colors from 'colors';
 import debug from 'debug';
+import colors from 'colors';
 import DataGenerator from '../data-generator/DataGenerator';
 import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
 import BacktestInstance from '../backtest-instance/BacktestInstance';
 import Optimization from '../optimization/Optimization';
 import dataSortFunction from '../data-sort-function/dataSortFunction';
+import BacktestExporter from '../backtest-exporter/BacktestExporter';
 const log = debug('WalkForward:Backtest');
 
 /**
@@ -24,6 +25,13 @@ export default class Backtest {
 	* @private
 	*/
 	dataSource;
+
+	/**
+	 * Holds backtest instances. Key is the parameter set used, value the corresponding 
+	 * BacktestInstance
+	 * @type {Map}
+	 */
+	instances = new Map();
 
 	/**
 	* Backtest facades Optimization – this.optimization holds the corresponding instance
@@ -50,8 +58,9 @@ export default class Backtest {
 		
 		// Invalid keys (warning)
 		Array.from(backtestConfig.keys()).forEach((key) => {
-			if (validKeys.indexOf(key) === -1) console.log(`WARNING: You passed a config through
-				Backtest.setConfiguration() that contains an unknown key (${ key }).`);
+			if (validKeys.indexOf(key) === -1) console.log(colors.yellow(`WARNING: You passed a 
+				config through Backtest.setConfiguration() that contains an unknown 
+				key (${ key }).`));
 		});
 
 
@@ -137,7 +146,6 @@ export default class Backtest {
 				more strategies. Use the setStrategies() method to do so.`);
 		}
 
-
 		// This is not a public method; test input/available data none the less (for unit tests).
 		if (!this.dataSource) {
 			throw new Error(`Backtest: Use setDataSource(source) method to add a data source before 
@@ -153,9 +161,6 @@ export default class Backtest {
 		const parameterSets = hasOptimizations ? this.optimization.generateParameterSets() : 
 			[undefined];
 
-		// Holds the results for each instance of parameterSets the backtest was run for
-		const instances = [];
-
 		for (const parameterSet of parameterSets) {
 
 			// Define INSIDE of parameter loop; as a BacktestInstrument emits open/close events,
@@ -166,22 +171,38 @@ export default class Backtest {
 			const instruments = new BacktestInstruments(generatorFunction, 	true);
 
 			const parameterizedStrategyRunner = this.strategyFunction(parameterSet);
-			console.log('--------', parameterizedStrategyRunner, parameterizedStrategyRunner.onNewInstrument);
 
 			const instance = new BacktestInstance(instruments, 
 				parameterizedStrategyRunner, this.configuration);
 			await instance.run();
-			instances.push({
-				parameterSet,
-				accounts: instance.accounts,
-				positions: instance.positions,
-				instruments: instance.instruments.instruments,
-			});
+			this.instances.set(parameterSet, instance);
 		}
-		log('Run done: %o', instances);
 
-		return instances;	
+		log('Run done: %o', this.instances);
+		return this.instances;	
+
 	}
+
+
+
+	/**
+	 * Exports the backtest's data to the folder provided
+	 * @param {String} path			Path (folder) to export CSVs to. Make sure it exists before
+	 *                        		calling save().
+	 */
+	async save(path) {
+
+		// Don't save before running
+		if (!this.instances || !this.instances.size) {
+			throw new Error(`Backtest: You cannot save backtest data before running the backtest. 
+				Make sure you call run() first.`);
+		}
+
+		const exporter = new BacktestExporter();
+		await exporter.export(this.instances, path);
+
+	}
+
 
 }
 

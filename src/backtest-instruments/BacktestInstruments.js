@@ -177,7 +177,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 		// When 'open' is emitted, orders that were opened on the previous bar will be fulfilled.
 		const openData = new Map([['open', data.get('open')], ['date', data.get('date')]]);
 		log('Emit open event for data %o with data %o', data, openData);
-		await instrument.add(data.date, openData);
+		await instrument.add(openData);
 		await this.emit('open', {
 			data: openData,
 			instrument: instrument,
@@ -211,7 +211,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 		// No open event was emitted: Add all data to the instrument in a new row
 		else {
 			// Data without the date (which is used as key)
-			await instrument.add(data.get('date'), bareData);
+			await instrument.add(bareData);
 		}
 
 		log('Emit close event with data %o for instrument %o', bareData, instrument);

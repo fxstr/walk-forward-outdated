@@ -1,5 +1,6 @@
 import test from 'ava';
 import Backtest from './Backtest';
+import BacktestInstance from '../backtest-instance/BacktestInstance';
 import debug from 'debug';
 import createTestData from '../helpers/createTestData';
 //import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
@@ -33,7 +34,12 @@ function setupData(passedData) {
 		}
 	}
 	const dataSource = new DataSource();
-	return { dataSource };
+
+	const strategy = () => ({ 
+		onClose: () => []
+	});
+
+	return { dataSource, strategy };
 }
 
 
@@ -229,6 +235,40 @@ test('cannot be run without strategies or instruments', async (t) => {
 });
 
 
+test('runs a backtest with parameter sets', async (t) => {
+	const bt = new Backtest();
+	const { dataSource, strategy } = setupData();
+	bt.setStrategies(strategy);
+	bt.setDataSource(dataSource);
+	bt.addOptimization('slowSMA', [1, 3], 3);
+	bt.addOptimization('fastSMA', [2, 4], 3);
+	await bt.run();
+	t.is(bt.instances.size, 9);
+	for (const [, instance] of bt.instances) {
+		t.is(instance instanceof BacktestInstance, true);
+	}
+
+});
+
+
+
+test('cannot save before running', async (t) => {
+	const bt = new Backtest();
+	const err = await t.throws(() => bt.save());
+	t.is(err.message.includes('cannot save backtest'), true);
+});
+
+
+
+
+test('run returns the instances', async (t) => {
+	const bt = new Backtest();
+	const { dataSource, strategy } = setupData();
+	bt.setStrategies(strategy);
+	bt.setDataSource(dataSource);
+	const results = await bt.run();
+	t.is(results instanceof Map, true);
+});
 
 
 

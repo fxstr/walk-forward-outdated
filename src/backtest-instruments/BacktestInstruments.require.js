@@ -243,19 +243,6 @@ test('backtestMode fires events for all (even the last) generated data', async (
 });
 
 
-test('backtestMode fires events for all (even the last) generated data', async (t) => {
-	// Last instrument does not fire within the for-of-loop but just afterwards (because date does
-	// not change)
-	const { generatorFunction } = setupData();
-	const bi = new BacktestInstruments(generatorFunction, true);
-	let instrumentsClosed = 0;
-	bi.on('close', () => {
-		instrumentsClosed++;
-	});
-	await bi.run();
-	t.is(instrumentsClosed, 4);
-});
-
 
 test('backtestMode has the right events and order', async (t) => {
 	const { generatorFunction } = setupData();

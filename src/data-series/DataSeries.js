@@ -1,5 +1,7 @@
 import debug from 'debug';
+import ColumnConfig from './ColumnConfig';
 import convertObjectToMap from './convertObjectToMap';
+import cloneDataSeries from './cloneDataSeries';
 const log = debug('WalkForward:DataSeries');
 
 /**
@@ -8,47 +10,74 @@ const log = debug('WalkForward:DataSeries');
 */
 export default class DataSeries {
 
+
 	/**
-	* @private 
 	* Holds the data series's data as objects with key: key, data: Map()
+	* @private 
 	*/
 	internalData = [];
+
+
+	/**
+	 * Holds column information. Key is the column's key, value the configuration. Configuration
+	 * may contain
+	 * - View information (for diagrams, tables …)
+	 * - Type information (Date etc., e.g. to format and read CSV)
+	 * - A description (if key is a Symbol; e.g. for CSV output)
+	 * @private
+	 */
+	columns = new Map();
 	
 
 
 
 	/**
 	* Adds one or multiple values for a given key. 
-	* @param {*} key				Key for the row
 	* @param {Map|object} data		Data to add, Maps are preferred
 	*/
-	add(key, data) {
+	add(data) {
 
-		log('Add key %o, data %o', key, data);
+		log('Add data %o', data);
 
 		// If an object (which is not a map) is passed, try to convert it to a Map
 		if (typeof data === 'object' && !(data instanceof Map)) {
-			try {
-				data = convertObjectToMap(data);
-			}
-			catch(err) {
-				log(`Could not convert object passed to a map, error is %s.`, err.message);
-			}
+			data = convertObjectToMap(data);
 		}
 
 		// Validate data parameter
 		if (!data || !(data instanceof Map)) {
-			throw new Error(`DataSeries: Second parameter passed to add method must be a Map,
+			throw new Error(`DataSeries: Data passed to add method must be a Map,
 				is ${ data }.`, );
 		}
 
-		// Use object with keys 'key' and 'data' to store our data
-		const entry = {
-			key: key,
-			// Clone data or original data is modified when set() is used
-			data: new Map(data),
-		}
-		this.internalData.push(entry);
+		// If column key is new, add it to this.columns
+		this.addColumns(data);
+
+		// Clone data or original data is modified when set() is used which adds a new item to the
+		// Map
+		this.internalData.push(new Map(data));
+
+	}
+
+
+	/**
+	 * Returns the default config for a column
+	 * @private
+	 * @return {object} 	Column configuration
+	 */
+	getDefaultColumnConfiguration() {
+		return new ColumnConfig();
+	}
+
+	/**
+	 * Adds data to this.columns if key is not yet present
+	 * @private
+	 * @param {Map} data		Data (passed through this.add or this.set)
+	 */
+	addColumns(data) {
+		for (const [key] of data) {
+			if (!this.columns.has(key)) this.columns.set(key, this.getDefaultColumnConfiguration());
+		}		
 	}
 
 
@@ -80,23 +109,21 @@ export default class DataSeries {
 
 		// If an object (which is not a map) is passed, try to convert it to a Map
 		if (typeof data === 'object' && !(data instanceof Map)) {
-			try {
-				data = convertObjectToMap(data);
-			}
-			catch(err) {
-				log(`Could not convert object passed to a map, error is %s.`, err.message);
-			}
+			data = convertObjectToMap(data);
 		}
 
-		if (!data || !(data instanceof Map)) {
-			throw new Error(`DataSeries: argument for set method must be a Map, is %o`,
+		if (!(data instanceof Map)) {
+			throw new Error(`DataSeries: Argument for set method must be a Map, is %o`,
 				data);
 		}
+
 		if (!this.internalData.length) {
 			throw new Error(`DataSeries: Cannot set data on head row as there are no rows 
 				at all`);
 		}
+
 		const headRow = this.head();
+
 		for (const [key, value] of data) {
 			// Don't let user overwrite existing data; if we did, we'd have to implement an other
 			// test to see if transformers were called.
@@ -107,62 +134,71 @@ export default class DataSeries {
 			}
 			log('Set col %o to %o', key, value);
 			headRow.set(key, value);
-
 		}
+
+		// Only add columns after testing data and throwig errors
+		this.addColumns(data);
+
 	}
 
 
 	/**
 	* Returns the latest few rows
-	* @param {int} itemCount		Amount of items to return, defaults to 1
+	* @param {integer} itemCount	Amount of items to return, defaults to 1
+	* @paramm {integer} startIndex	Index to start (from the end), defaults to 0
 	* @returns {array|object}		Array of objects (if param intemCount > 1), else a single 
 	*								object (wich corresponds to the data field of internalData; key
 	*								is ignored)
 	*/
-	head(itemCount = 1) {
+	head(itemCount = 1, startIndex = 0) {
+		const len = this.internalData.length;
 		const result = this.internalData
-			.slice(itemCount * -1)
-			.reverse()
-			.map((item) => item.data);
+			// Don't use negative numbers, they will slice from the end!
+			.slice(Math.max(0, len - itemCount - startIndex), Math.max(0, len - startIndex))
+			.reverse();
 		return itemCount === 1 ? result[0] : result;
 	}
 
 
 	/**
 	* Returns the first few rows
-	* @param {int} itemCount		Amount of items to return, defaults to 1
+	* @param {integer} itemCount	Amount of items to return, defaults to 1
+	* @paramm {integer} startIndex	Index to start, defaults to 0
 	* @returns {array|object}		Array of objects (if param intemCount > 1), else a single 
 	*								object (wich corresponds to the data field of internalData; key
 	*								is ignored)
 	*/
-	tail(itemCount = 1) {
+	tail(itemCount = 1, startIndex = 0) {
 		const result = this.internalData
-			.slice(0, itemCount)
-			.map((item) => item.data);
+			.slice(startIndex, itemCount + startIndex);
 		return itemCount === 1 ? result[0] : result;
 	}
 
 
 	/**
-	* Returns all data for a certain key
-	* @param {any} key		Key to filter data by
-	* @returns {array}		An array of all data for the given key. Empty if key was not found.
-	*/
-	getDataByKey(key) {
-		return this.internalData
-			.filter((item) => item.key === key)
-			.map((item) => item.data);
+	 * Creates a new DataSeries from an existing data set (source). If a transformer is passed, 
+	 * it's applied to the data passed.
+	 * @param  {DataSeries} source      An existing DataSeries
+	 * @param  {function} transformer	Function that takes 3 arguments: column, row and cell. Must
+	 *                                	return the new cell value.
+	 * @return {DataSeries}             Copied and transformed DataSeries
+	 */
+	static from(source, transformer) {
+
+		if (transformer !== undefined && typeof transformer !== 'function') {
+			throw new Error(`DataSeries: Second argument of transformer must be a function or
+				nothing at all.`);
+		}
+
+		if (source instanceof DataSeries) {
+			return cloneDataSeries(DataSeries, source, transformer);
+		}
+		else {
+			throw new Error(`DataSeries: Call static from method with an existing DataSeries;
+				other sources are not yet supported.`);
+		}
+
 	}
-
-
-	/**
-	* Returns true if col with name is available on the head row, else false
-	* @protected
-	* @param {*} columnName		Name of the column to look for
-	*/
-	/*doesHeadRowContainColumn(columnName) {
-		return this.head().length && this.head()[0].hasOwnProperty(columnName);
-	}*/
 
 }
 

@@ -1,5 +1,6 @@
 import DataSeries from './DataSeries';
 import debug from 'debug';
+import convertObjectToMap from './convertObjectToMap';
 const log = debug('WalkForward:TransformableDataSeries');
 
 /**
@@ -30,11 +31,10 @@ export default class TransformableDataSeries extends DataSeries {
 	/**
 	* Adds one or multiple data values for a given key. Only one row (key) may be passed. *After*
 	* the row is added, registered transformers are executed.
-	* @param {*} key
 	* @param {object} data
 	* @returns {Promise}
 	*/
-	async add(key, data) {
+	async add(data) {
 
 		// Re-start transform process
 		this.resetExecutedTransformers();
@@ -48,11 +48,11 @@ export default class TransformableDataSeries extends DataSeries {
 
 		// Super is not supported on async functions in babel, see 
 		// https://github.com/babel/babel/issues/3930
-		DataSeries.prototype.add.call(this, key, new Map());
+		DataSeries.prototype.add.call(this, new Map());
 		await this.executeAllTransformers();
 
-		DataSeries.prototype.set.call(this, data);
-		await this.executeAllTransformers();
+		// set executes all transformers – no need to do it here.
+		await this.set(data);
 
 	}
 
@@ -128,26 +128,18 @@ export default class TransformableDataSeries extends DataSeries {
 	async executeAllTransformers() {
 
 		const nextExecution = this.getNextTransformerToExecute();
+		// All done
 		if (!nextExecution) return;
 
 		const { transformer, data } = nextExecution;
 
 		// For params of next(), see addTransformer; DO NOT PASS more data if not absolutely needed
 		// as we want to have stateless/simple transformers
-		const transformerResult = transformer.transformer.next(data);
-		// Convert any result to a promise (to simplify interactions)
-		let promisedTransformerResult = 
-			await this.createPromiseFromTransformer(transformerResult);
+		const transformerResult = await transformer.transformer.next(data);
+		log('Executed transformer; result is %o, data was %o', transformerResult, data);
 		this.executedTransformers.push(transformer.transformer);
 
-		// If return value is not a Map(), convert it into a Map as addTransformedData only handles 
-		// Maps(). Numbers, strings, objects, bools will all become values.
-		if (!(promisedTransformerResult instanceof Map)) {
-			promisedTransformerResult = new Map([[
-				this.defaultReturnValuePropertyName, promisedTransformerResult]]);
-		}
-
-		await this.addTransformedData(promisedTransformerResult, transformer);
+		await this.addTransformedData(transformerResult, transformer);
 
 		// Do the next round and see if other transformers are ready to be executed. We cannot
 		// only call executeAllTransformers on set and add as setting/adding one col might trigger
@@ -190,34 +182,38 @@ export default class TransformableDataSeries extends DataSeries {
 	/**
 	* Adds results of a transformer to latest row. 
 	* @private
-	* @param {object} result			Result of the transformer to be added; casted to an object
-	*									if a non-object was returned.
+	* @param {*} result					Result of the transformer to be added; may be an object or
+	*                       			Map (if it contains multiple cols) or anything else (if it's
+	*                       			a single col).
 	* @param {object} transformer		An entry of this.transformers
 	*/
 	async addTransformedData(result, transformer) {
 
+		// Data to add to current row
 		const rowData = new Map();
-			
-		// Get all keys (symbols an regular properties) from transformer.keys, go through
-		// them
-		for (const [key] of transformer.keys) {
 
-			// Key returned by getKeys(), but not part of next()'s return value
-			if (!result.has(key)) {
-				throw new Error(`TransformableDataSeries: Key ${ key } was announced through
-					transformer's getKeys() method, but is not part of the object returned
-					by the next() method (${ JSON.stringify(result) }).`);
+		// Result is an object (and not a Map): Convert it to a Map for easier handling
+		if (typeof result === 'object' && result !== null && !(result instanceof Map)) {
+			result = convertObjectToMap(result);
+		}
+
+		if (result instanceof Map) {
+			for (const [resultKey, value] of result) {
+				const seriesKey = transformer.keys[resultKey];
+				if (!seriesKey) {
+					throw new Error(`TransformableDataSeries: Transformer returned multiple values;
+						you did not specify a key for ${ resultKey }. Make sure you call 
+						addTransformer with appropriate keys.`);
+				}
+				rowData.set(seriesKey, value);
 			}
-			rowData.set(transformer.keys.get(key), result.get(key));
+		}
+		// Single value was returned: Use transformer.keys (whatever it is) as a key
+		else {
+			rowData.set(transformer.keys, result);
 		}
 
-		// Check if key was not announced by getKeys() but part of next()'s return value
-		for (const [key] of result) {
-			if (!transformer.keys.has(key)) {
-				throw new Error(`TransformableDataSeries: Key ${ key } is present on the Map
-					returned by next() method, but was not announced by getKeys().`);
-			}			
-		}
+
 
 		log('Add transformed data %o to head row', rowData);
 		await this.set(rowData);
@@ -232,12 +228,12 @@ export default class TransformableDataSeries extends DataSeries {
 	* @param {*} value
 	* @returns {Promise}
 	*/
-	createPromiseFromTransformer(value) {
+	/*createPromiseFromTransformer(value) {
 		if (value && value instanceof Promise) return value;
 		// Return a synchronously resolving promise
 		// (and not async by creating a new promise and then in the next loop resolving it)
 		return Promise.resolve(value);
-	}
+	}*/
 
 
 	/**
@@ -248,22 +244,30 @@ export default class TransformableDataSeries extends DataSeries {
 	* @param {array} properties		Properties to watch; when all properties are available, 
 	*								the transformer's next() method will be called. If the array is
 	*								empty, transformer.next() will be called before any value is 
-	*								added to the data series.
+	*								added to the data series (therefore with an empty data series). 
+	*								This is amongst others needed to clone previous values (e.g.
+	*								positions – is it?).
 	* @param {object} transformer	Transformer; is an object/instantiated class with a method 
 	*								called next(). next() will be called whenever all properties are 
 	*								available. Must return either a single value or a Map() that 
-	*								will be merged with the current row. If a Map() is returned,
-	*								the transformer must also have a method named getKeys() that 
-	*								returns an array with all the keys of the Map that will be
-	*								returned. We need those keys to return the key mapping not
-	*								only when the transformer's next() method is called, but already
-	*								when the transformer is added.
+	*								will be merged with the current row. 
 	*								The transformer's next() method will be called with the 
 	*								following parameters: 
 	*								- array of values for the head() row of all properties (see 
-	*								  above) passed in.
+	*								  above).
 	*								We use no further parameters (e.g. the whole head row or the
 	*								whole data set) to keep our transformers clean. 
+	* @param {object|*} keys		Keys that we use to store the transformer's return values in 
+	*                         		this DataSeries. If tranformer returns a single value, pass 
+	*                         		anything that can be used as a key in a Map(). If transformer 
+	*                         		returns multiple values (as an object), pass an object; keys
+	*                         		are the keys of the object returned by the transformer, values
+	*                         		the keys used to store the value in this DataSeries. Try to use
+	*                         		Symbols() as the whole idea of using keys is to prevent clashes
+	*                         		of keys. 
+	*                         		(In an earlier version, we created Symbols() as keys and 
+	*                         		returned the mapping. This made things too complicated (in Algos
+	*                         		where we had to store multiple keys for multiple instruments). 
 	* @returns {object}				An object with keys and their corresponding symbols that will
 	* 								be used to attach the transformer's result to the row. If a 
 	*								transformer's next method returns { top: 5, bottom: 2}, it must
@@ -274,7 +278,7 @@ export default class TransformableDataSeries extends DataSeries {
 	*								symbols internally (instead of a passed-in name) allows us to
 	*								prevent any key collisions.
 	*/
-	addTransformer(properties, transformer) {
+	addTransformer(properties, transformer, keys) {
 
 		if (!Array.isArray(properties)) {
 			throw new Error(`TransformableDataSeries: Argument 'properties' must be an array, is
@@ -290,39 +294,13 @@ export default class TransformableDataSeries extends DataSeries {
 			throw new Error(`TransformableDataSeries: Every transformer must have a next method.`);
 		}
 
-		// If transformer's next method returns an object, it must have a getKeys method that 
-		// returns all the keys of the object that will be returned. If this method is not 
-		// not present, just use 'value' as the name. 
-		const keys = transformer.getKeys && typeof transformer.getKeys === 'function' ?
-			transformer.getKeys() : [this.defaultReturnValuePropertyName];
-
-		// Create a map that maps the next method's object keys to symbol; those symbols will
-		// be used to (uniquely) store the results in the TransformableDataSeries.
-		// Map is needed to map values from transformer to value on DataSeries.
-		const keyMap = new Map();
-		keys.forEach((key) => {
-			keyMap.set(key, Symbol());
-		});
-
 		this.transformers.push({
 			properties: properties,
 			transformer: transformer,
-			keys: keyMap,
+			keys: keys,
 		});
 
-		log('Add transformer %o with properties %o and keys %o', transformer, properties, keyMap);
-
-		// If default value is used as a key, return it directly
-		if (keys.length === 1 && keys[0] === this.defaultReturnValuePropertyName) {
-			return keyMap.get(this.defaultReturnValuePropertyName);
-		}
-
-		// Return the map that contains the keys to the symbols used to store the values. Do not
-		// use a map but an object to allow object destructuring:
-		// const { key1, key2 } = TransformableDataSeries.addTransformer(…);
-		const returnValue = {};
-		keyMap.forEach((value, key) => returnValue[key] = value);
-		return returnValue;
+		log('Add transformer %o with properties %o and keys %o', transformer, properties, keys);
 
 	}
 

@@ -11,7 +11,7 @@ const log = debug('WalkForward:executeOrders');
  * @param {Instrument} orders[].instrument	Instrument to order
  * @param {Map} prices				Current prices; key is instrument, value current price
  * @param {number} cash				Current cash 
- * @return {object}
+ * @return {Map}
  */
 export default function executeOrders(positions, orders, prices, cash) {
 

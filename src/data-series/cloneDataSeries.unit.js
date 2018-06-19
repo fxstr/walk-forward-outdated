@@ -35,3 +35,15 @@ test('calls transformer with correct params', (t) => {
     // Cell
     t.deepEqual(allArgs[0][2], 1);
 });
+
+test('transforms column keys', (t) => {
+    const { dataSeries } = setupData();
+    const clone = cloneDataSeries(DataSeries, dataSeries, (col, row, cell) => {
+        if (col === 'b') return cell + 1;
+        return cell;
+    }, (colKey) => colKey === 'b' ? 'c' : 'a');
+    t.is(clone.data.length, 2);
+    t.deepEqual(clone.data[0], new Map([['a', 1], ['c', 3]]));
+    t.deepEqual(clone.data[1], new Map([['a', 2], ['c', 1]]));
+
+});

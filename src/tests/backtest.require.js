@@ -5,7 +5,8 @@ import path from 'path';
 import del from 'del';
 import fs from 'fs';
 import test from 'ava';
-import Backtest, { rejectOnFalse, BacktestCSVSource, indicators, Algorithm } from '../index.js';
+import Backtest, { rejectOnFalse, BacktestCSVSource, Algorithm } from '../index.js';
+import { sma as SMA } from '../indicators.js';
 
 
 function clearDirectory() {
@@ -18,34 +19,29 @@ function clearDirectory() {
 
 class SMAAlgo extends Algorithm {
 
-	fastSMAKey = Symbol();
-	slowSMAKey = Symbol();
+	fastSMAKey = 'fastSma'; // Better: Use Symbols()
+	slowSMAKey = 'slowSma';
 
 	constructor(field, fastSMA, slowSMA) {
 		super();
 		console.log('SMAAlgo: Init with %s %d %d, is %o', field, fastSMA, slowSMA, this);
 		this.field = field;
-		// Use whole numbers for SMA lengths
-		this.fastSMALength = parseInt(fastSMA, 10);
-		this.slowSMALength = parseInt(slowSMA, 10);
+		this.fastSMALength = Math.round(fastSMA, 10);
+		this.slowSMALength = Math.round(slowSMA, 10);
 	}
 
 	onNewInstrument(instrument) {
 		console.log('SMAAlgo: Instrument %o added; fast is %d, slow %d', instrument.name, 
 			this.fastSMALength, this.slowSMALength);
-		instrument.addTransformer([this.field], new indicators.SMA(this.fastSMALength),
+		instrument.addTransformer([this.field], new SMA(this.fastSMALength),
 			this.fastSMAKey);
-		instrument.addTransformer([this.field], new indicators.SMA(this.slowSMALength),
+		instrument.addTransformer([this.field], new SMA(this.slowSMALength),
 			this.slowSMAKey);
-		//instrument.columns.get(this.fastSMAKey).description = 'Fast SMA';
-		//instrument.columns.get(this.slowSMAKey).description = 'Slow SMA';
 	}
 
 	onClose(orders, instrument) {
 		const fast = instrument.head().get(this.fastSMAKey);
 		const slow = instrument.head().get(this.slowSMAKey);
-		//console.log('SMAAlgo: close, head is %o, fastSMA %d, slowSMA %d, key is %o', 
-		//	instrument.head(), fast, slow, this.fastSMAKey);
 		console.log('%f > %f?', fast, slow);
 		if (fast && slow && fast > slow) {
 			console.log('SMA: Create order for %o', instrument.name);

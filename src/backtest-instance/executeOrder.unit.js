@@ -79,7 +79,12 @@ test('executes in opposite direction (from short)', (t) => {
 			size: -1,
 			value: 6, // shortened @8, now @10
 			openPrice: 8, // unchanged
-		}, shortPosition.positions[1]]
+		}, shortPosition.positions[1]],
+		closedPositions: [{
+			size: -2,
+			value: 12,
+			openPrice: 8,
+		}],
 	});
 });
 
@@ -93,20 +98,30 @@ test('executes in opposite direction (from long)', (t) => {
 			size: 5,
 			value: 50,
 			openPrice: 12,
+		}],
+		closedPositions: [{
+			size: 3,
+			value: 30,
+			openPrice: 5,
+		}, {
+			size: 2,
+			value: 20,
+			openPrice: 12
 		}]
 	});
 });
 
 test('execute in opposite direction and overshoot (from short)', (t) => {
 	const { shortPosition, currentPrice } = setupData();
-	t.deepEqual(executeOrder(2, shortPosition, currentPrice), {
-		size: -8,
-		value: 118,
+	t.deepEqual(executeOrder(12, shortPosition, currentPrice), {
+		size: 2,
+		value: 20,
 		positions: [{
-			size: -1,
-			value: 6, // shortened @8, now @10
-			openPrice: 8, // unchanged
-		}, shortPosition.positions[1]]
+			size: 2,
+			value: 20, // shortened @8, now @10
+			openPrice: 10, // unchanged
+		}],
+		closedPositions: shortPosition.positions,
 	});
 });
 
@@ -119,9 +134,11 @@ test('execute in opposite direction and overshoot (from long)', (t) => {
 			size: -2,
 			value: 20,
 			openPrice: 10,
-		}]
+		}],
+		closedPositions: longPosition.positions,
 	});
 });
+
 
 test('closes position', (t) => {
 	const { longPosition, currentPrice } = setupData();
@@ -129,6 +146,7 @@ test('closes position', (t) => {
 		size: 0,
 		positions: [],
 		value: 0,
+		closedPositions: longPosition.positions,
 	});
 });
 

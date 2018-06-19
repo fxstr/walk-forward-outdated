@@ -1,4 +1,4 @@
-open,date,high,low,close,Unspecified Symbol(),Unspecified Symbol()
+open,date,high,low,close,f,s
 20,Mon Jan 01 2018 01:00:00 GMT+0100 (CET),23,19,22,22,
 19,Tue Jan 02 2018 01:00:00 GMT+0100 (CET),21,19,20,20,21
 20,Wed Jan 03 2018 01:00:00 GMT+0100 (CET),25,20,20,20,20

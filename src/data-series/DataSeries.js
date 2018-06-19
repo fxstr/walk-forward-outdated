@@ -178,12 +178,14 @@ export default class DataSeries {
 	/**
 	 * Creates a new DataSeries from an existing data set (source). If a transformer is passed, 
 	 * it's applied to the data passed.
-	 * @param  {DataSeries} source      An existing DataSeries
-	 * @param  {function} transformer	Function that takes 3 arguments: column, row and cell. Must
-	 *                                	return the new cell value.
-	 * @return {DataSeries}             Copied and transformed DataSeries
+	 * @param  {DataSeries} source      		An existing DataSeries
+	 * @param  {function} transformer			Function that takes 3 arguments: column, row and 
+	 *                                	 		cell. Must return the new cell value.
+	 * @param {function} columnKeyTransformer 	Function that takes a single argument (column key)
+	 *                                         	and returns new column key
+	 * @return {DataSeries}             		Copied and transformed DataSeries
 	 */
-	static from(source, transformer) {
+	static from(source, transformer, columnKeyTransformer) {
 
 		if (transformer !== undefined && typeof transformer !== 'function') {
 			throw new Error(`DataSeries: Second argument of transformer must be a function or
@@ -191,7 +193,7 @@ export default class DataSeries {
 		}
 
 		if (source instanceof DataSeries) {
-			return cloneDataSeries(DataSeries, source, transformer);
+			return cloneDataSeries(DataSeries, source, transformer, columnKeyTransformer);
 		}
 		else {
 			throw new Error(`DataSeries: Call static from method with an existing DataSeries;

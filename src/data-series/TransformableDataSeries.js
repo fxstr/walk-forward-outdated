@@ -192,33 +192,63 @@ export default class TransformableDataSeries extends DataSeries {
 		// Data to add to current row
 		const rowData = new Map();
 
+		// Get columns that are added to DataSeries; when they are created, description is set
+		// if tranformer has a getDescription() method.
+		const newCols = [];
+
 		// Result is an object (and not a Map): Convert it to a Map for easier handling
 		if (typeof result === 'object' && result !== null && !(result instanceof Map)) {
-			result = convertObjectToMap(result);
-		}
-
-		if (result instanceof Map) {
-			for (const [resultKey, value] of result) {
-				const seriesKey = transformer.keys[resultKey];
-				if (!seriesKey) {
-					throw new Error(`TransformableDataSeries: Transformer returned multiple values;
-						you did not specify a key for ${ resultKey }. Make sure you call 
-						addTransformer with appropriate keys.`);
-				}
-				rowData.set(seriesKey, value);
+			const intermediateResult = convertObjectToMap(result);
+			for (const [key, value] of intermediateResult) {
+				rowData.set(transformer.keys[key], value);
 			}
 		}
-		// Single value was returned: Use transformer.keys (whatever it is) as a key
+		// Result is a map: Change key from key passed by transformer to key passed to 
+		// addTransformer
+		else if (result instanceof Map) {
+			for (const [key, value] of result) {
+				rowData.set(transformer.keys[key], value);
+			}
+		}
+		// Result is something else than an object or a Map: Convert it to a map with a single 
+		// entry.
 		else {
 			rowData.set(transformer.keys, result);
 		}
 
-
+		// Check keys of rowData
+		for (const [resultKey] of rowData) {
+			if (!resultKey) {
+				throw new Error(`TransformableDataSeries: You need to specify a key for every 
+					result a transformer returns (as an argument for addTransformer()). 
+					The key for ${ resultKey } is missing.`);
+			}
+			if (!this.columns.has(resultKey)) newCols.push(resultKey);
+		}
 
 		log('Add transformed data %o to head row', rowData);
 		await this.set(rowData);
 
+		// Better solution: Use something like setColConfig in DataSeries so that we can config
+		// dataSeries before they're used.
+		//this.updateColumnDefinitions(newCols, transformer.transformer);
+
 	}
+
+
+
+	/**
+	 * When a column is newly added, we try to get the column's description text from the 
+	 * transformer that was used to create the column value.
+	 * @param {array} columns  			Columns that were just created
+	 * @param {object} transformer		Transformer that was used to create the column; may contain
+	 *                              	a getDescription() property
+	 */
+	/*updateColumnDefinitions(columns, transformer) {
+		if (typeof transformer.getDescription !== 'function') return;
+		const description = transformer.getDescription();
+
+	}*/
 
 
 	/**

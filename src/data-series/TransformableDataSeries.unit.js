@@ -174,7 +174,7 @@ test('calls transformer\'s next method with correct parameters', async (t) => {
 			return 0;
 		}
 	}
-	ds.addTransformer(['open', 'close'], new Transformer());
+	ds.addTransformer(['open', 'close'], new Transformer(), Symbol());
 	await ds.add({ open: 2, close: 4 });
 	await ds.add({ close: 5, open: 3 });
 	// Called once per row
@@ -192,7 +192,7 @@ test('executes a transformer without dependencies before data is added', async (
 			return 0;
 		}
 	}
-	ds.addTransformer([], new Transformer());
+	ds.addTransformer([], new Transformer(), Symbol());
 	await ds.add({ open: 2 });
 	t.is(ds.head().size, 2);
 });
@@ -248,29 +248,28 @@ test('multiple transformers work in the expected order', async (t) => {
 test('works with multiple input values', async (t) => {
 	const ds = new TransformableDataSeries();
 	const { MultipleIntoOneTransformer } = generateTransformers();
-	const value = ds.addTransformer(['open', 'close', 'high'], 
-		new MultipleIntoOneTransformer());
+	const key = Symbol();
+	ds.addTransformer(['open', 'close', 'high'], 
+		new MultipleIntoOneTransformer(), key);
 	await ds.add({ open: 3, high: 6, low: 1, close: 2 });
-	t.is(ds.head().get(value), '326');
+	t.is(ds.head().get(key), '326');
 });
 
 
-/*test('has helpful error messages if getKeys() returns too many keys', async (t) => {
-	class TooManyKeys {
+test('fails if not all keys were provided (single return value)', async (t) => {
+	class WithKey {
 		next() {
-			return new Map([['a', 1]]);
-		}
-		getKeys() {
-			return ['a', 'b'];
+			return 5;
 		}
 	}
 	const ds = new TransformableDataSeries();
-	ds.addTransformer(['open'], new TooManyKeys());
+	ds.addTransformer(['open'], new WithKey());
 	const err = await t.throws(ds.add({ open: 4 }));
-	t.is(err.message.indexOf('is not part of the object') > -1, true);
-});*/
+	t.is(err.message.includes('You need to specify a key'), true);
+});
 
-test('fails if not all keys were provided', async (t) => {
+
+test('fails if not all keys were provided (multi return value)', async (t) => {
 	class TooManyKeys {
 		next() {
 			return new Map([['a', 1]]);
@@ -278,8 +277,8 @@ test('fails if not all keys were provided', async (t) => {
 	}
 	const ds = new TransformableDataSeries();
 	ds.addTransformer(['open'], new TooManyKeys(), { b: Symbol() });
-	const err = await t.throws(ds.add({ open: 4 }));
-	t.is(err.message.includes('did not specify a key for a'), true);
+	const err = await t.throws(() => ds.add({ open: 4 }));
+	t.is(err.message.includes('You need to specify a key'), true);
 });
 
 

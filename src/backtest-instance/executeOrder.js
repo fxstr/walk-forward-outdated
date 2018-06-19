@@ -45,12 +45,15 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 		};
 	}
 
-	// Order goes in the other direction than we're holding – reduce existing positions and add an 
+	// Order goes in the *other* direction than we're holding – reduce existing positions and add an 
 	// additional position if needed
 	else {
 
 		// Clone positions, don't reference anything
 		const newPositions = [];
+		
+		// We need closed positions to calculate a strategy's KPIs (e.g. profit factor)
+		const closedPositions = [];
 
 		// We close position by position – reduce outstandingOrderSize by the corresponding amount
 		// until we reach 0
@@ -63,7 +66,8 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 		// existing positions, create a new position
 		currentPosition.positions.forEach((position) => {
 			
-			// Position is larger than order: Just reduce
+			// Position is larger than outstanding order: Just reduce; if outstandingOrderSize is
+			// 0, position is just added to newPositions (unchanged)
 			// No need to observe leading signs, we're going in the opposite direction
 			if (Math.abs(position.size) > Math.abs(outstandingOrderSize)) {
 				// Just add order size – we checked above if orderSize < position
@@ -77,7 +81,19 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 					value: newPositionValue,
 					openPrice: position.openPrice, // Keep the old openig price
 				});
-				// Calculate gain of this trade (remember: we're selling)
+				console.log('reduce', position.size, outstandingOrderSize);
+
+				// If order size !== 0, add reduced position to closingPositions
+				if (outstandingOrderSize !== 0) {
+					closedPositions.push({
+						size: outstandingOrderSize * -1,
+						value: calculatePositionValue(price, position.openPrice, 
+							outstandingOrderSize * -1),
+						openPrice: position.openPrice,
+					});
+				}
+
+				// Calculate gain of this trade (remember: we're selling/reducing size)
 				const gain = position.value - newPositionValue;
 				gainRealized += gain;
 				outstandingOrderSize -= (newPositionSize - position.size);
@@ -88,6 +104,8 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 			else {
 				outstandingOrderSize += position.size;
 				gainRealized += position.value;
+				console.log('dump');
+				closedPositions.push({ ...position });
 				log('Dump position %o', position);
 			}
 			
@@ -109,6 +127,7 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 			size: newPositions.reduce((prev, item) => prev + item.size, 0),
 			value: newPositions.reduce((prev, item) => prev + item.value, 0),
 			positions: newPositions,
+			closedPositions: closedPositions,
 		};
 
 	}

@@ -66,11 +66,13 @@ export default class BacktestExporter {
         // Export positions: They contain objects; just take the size of every instrument instead 
         // of the whole object (that would be stringified to [object Object]).
         const convertedPositions = DataSeries.from(instance.positions, (col, row, cell) => {
-            // For cols type and date: return their actual value
-            if (!(col instanceof Instrument)) return cell;
-            return cell.size || 0;
-        });
-        console.log('POSITIONS:', convertedPositions, instance.positions);
+                // For cols type and date: return their actual value
+                if (!(col instanceof Instrument)) return cell;
+                return cell.size || 0;
+            }, 
+            // Use instrument name as instrument's col head
+            (columnKey) => columnKey instanceof Instrument ? columnKey.name : columnKey
+        );
         await exporter.export(convertedPositions, path.join(instancePath, 'positions.csv'));
 
         // Export instruments; instance.instruments is an instance of BacktestInstruments; to 

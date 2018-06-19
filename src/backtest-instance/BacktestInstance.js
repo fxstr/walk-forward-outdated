@@ -105,11 +105,7 @@ export default class BacktestInstance {
         const currentDate = data[0].head().get('date');
         log('Close with %o', data);
 
-        // Create Map of prices for instruments that just opened to simplify things
-        const prices = data.reduce((prev, instrument) => {
-            // Use && prev to return prev
-            return prev.set(instrument, instrument.head().get('close')) && prev;
-        }, new Map());
+        const prices =  this.getCurrentPrices(data, 'close');
 
         // Make sure we only calculate values of acutal positions (and not the date or type field
         // that are also part of this.positions)
@@ -137,7 +133,6 @@ export default class BacktestInstance {
         // Always update positions, even if they're empty. Add a new row with field type set to
         // 'close'
         this.positions.add(updatedPositions);
-
     }
 
 
@@ -170,11 +165,7 @@ export default class BacktestInstance {
         log('Handle afterOpen for %s on %s', data.map((instrument) => instrument.name).join(', '),
             currentDate);
 
-        // Create Map of prices for instruments that just opened to simplify things
-        const prices = data.reduce((prev, instrument) => {
-            // Use && prev to return prev
-            return prev.set(instrument, instrument.head().get('open')) && prev;
-        }, new Map());
+        const prices = this.getCurrentPrices(data, 'open');
 
         // Update all positions values
         const recalculatedPositions = calculatePositionsValues(
@@ -217,10 +208,25 @@ export default class BacktestInstance {
         log('New positions are %o', newPositions);
         this.positions.add(newPositions);
 
-
         // Delete all orders – they're good for 1 bar only
         this.orders = [];
 
+    }
+
+
+    /**
+     * Gets most current prices for all instruments passed and returns them in a map (key: 
+     * instrument, value: price)
+     * @param  {array} instrument   Instruments to get prices from
+     * @param  {string} type        Kind of price to get, either 'open' or 'close'
+     * @return {Map}
+     * @private
+     */
+    getCurrentPrices(instruments, type) {
+        return instruments.reduce((prev, instrument) => {
+            // Use && prev to return prev
+            return prev.set(instrument, instrument.head().get(type)) && prev;
+        }, new Map());
     }
 
 

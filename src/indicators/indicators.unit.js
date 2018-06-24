@@ -8,7 +8,10 @@ test('exports are correct', (t) => {
     Object.keys(tulind.indicators).forEach((name) => {
         // Exception for «var»
         if (name === 'var') name = 'variance';
-        if (typeof indicators[name] !== 'function') console.log(name);
-        t.is(typeof indicators[name], 'function');
+        t.is(typeof indicators[upperCase(name)], 'function');
     });
 });
+
+function upperCase(name) {
+    return name.substr(0, 1).toUpperCase() + name.substr(1);
+}

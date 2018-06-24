@@ -4,6 +4,8 @@ import debug from 'debug';
 import DataSeriesExporter from '../data-series-exporter/DataSeriesExporter';
 import DataSeries from '../data-series/DataSeries';
 import Instrument from '../instrument/Instrument';
+import exportToCsv from '../export-to-csv/exportToCsv';
+import HighChartsExporter from './HighChartsExporter';
 const log = debug('WalkForward:BacktestExporter');
 
 
@@ -16,13 +18,13 @@ export default class BacktestExporter {
                 ${ instances }.`);
         }
         if (!directory || typeof directory !== 'string') {
-            throw new Error(`BacktestExporter: direcotry passed must be a string, is 
+            throw new Error(`BacktestExporter: directory passed must be a string, is 
                 ${ directory }.`);
         }
         this.instances = instances;
 
-        // Store everything in a subfolder that counts upwards; don't use date as it's difficult
-        // to test.
+        // Store everything in a subfolder that counts upwards; don't use current date as it's 
+        // difficult to test.
         const folderContent = fs.readdirSync(directory);
         let folderName = 1;
         // Walk through files/folders; if name is a valid int, set folderName to next higher int
@@ -75,6 +77,15 @@ export default class BacktestExporter {
         );
         await exporter.export(convertedPositions, path.join(instancePath, 'positions.csv'));
 
+        // Export performance indicator results
+        // Re-format performance results; row 0: all names, row 1: all values
+        const results = [[], []];
+        instance.performanceResults.forEach((result, name) => {
+            results[0].push(name);
+            results[1].push(result);
+        });
+        exportToCsv(path.join(instancePath, 'performance.csv'), results);
+
         // Export instruments; instance.instruments is an instance of BacktestInstruments; to 
         // access the instruments, we have to call its instruments property.
         for (const instrument of instance.instruments.instruments) {
@@ -95,6 +106,17 @@ export default class BacktestExporter {
         const exporter = new DataSeriesExporter();
         log('Export instrument %s to %s', instrument.name, destination);
         await exporter.export(instrument, destination);
+        await this.exportInstrumentChartConfig(instrument, basePath);
+    }
+
+
+    /**
+     * Export instrument as a Highstock config (Highcharts) to get a quick view at things
+     * TODO: Use a vendor independent view format
+     */
+    async exportInstrumentChartConfig(instrument, basePath) {
+        const exporter = new HighChartsExporter();
+        exporter.export(instrument, basePath);
     }
 
 

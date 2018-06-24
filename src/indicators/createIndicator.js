@@ -8,6 +8,12 @@ export default function createIndicator(indicatorConfig) {
 
     return class {
 
+        /**
+         * Needed for chartConfigs
+         * @private
+         */
+        static identifier = indicatorConfig.name;
+
         // We'll store past values in this.history as options (e.g. sma length) might change and 
         // previous values might be required to calculate the result.
         // Create one item per input needed
@@ -26,7 +32,8 @@ export default function createIndicator(indicatorConfig) {
         /**
          * Add number(s) to indicator, then call it
          * @param  {values} values     number
-         * @return {Promise}
+         * @return {Promise}           Resolves to a single value if the indicator returns a single
+         *                             value, else returns to a map: new Map([[output_name, value]])
          */
         next(...values) {
 
@@ -47,14 +54,24 @@ export default function createIndicator(indicatorConfig) {
                         results);
                     if (err) reject(err);
                     // tulip returns an array of results, going back in time; just return the 
-                    // most recent result *if* all ouputs have a length of 0; else return [].
-                    const cleanResult = results.every((result) => result.length) ? 
-                        results.map((result) => result[result.length - 1]) : [];
-                    resolve(cleanResult);
+                    // most recent result or undefined for every output gotten.
+                    const latestResult = results.map((result) => {
+                        return result.length ? result[result.length - 1] : undefined;
+                    });
+                    // If indicator returns just one value, return it directly.
+                    if (latestResult.length === 1) return resolve(latestResult[0]);
+                    // Convert array to a map where the keys are the names and the values the 
+                    // values, e.g. new Map([['stoch_k', 3], ['stoch_d', 2]])
+                    const resultMap = latestResult.reduce((prev, item, index) => {
+                        prev.set(indicatorConfig.output_names[index], item);
+                        return prev;
+                    }, new Map());
+                    resolve(resultMap);
                 });
             });
 
         }
+
     };
 
 }

@@ -5,8 +5,9 @@ import path from 'path';
 import del from 'del';
 import fs from 'fs';
 import test from 'ava';
-import Backtest, { rejectOnFalse, BacktestCSVSource, Algorithm } from '../index.js';
-import { sma as SMA } from '../indicators.js';
+import Backtest, { rejectOnFalse, runThrough, BacktestCSVSource, Algorithm } from '../index.js';
+import { ProfitFactor, Cagr } from '../performanceIndicators';
+import { Sma as SMA, Stoch } from '../indicators.js';
 
 
 function clearDirectory() {
@@ -54,6 +55,36 @@ class SMAAlgo extends Algorithm {
 	}
 
 }
+
+
+// Stoch indicators to
+// a) test export of multi-return-value indicator
+// c) test runThrough
+class StochIndicators extends Algorithm {
+
+	stochKKey = Symbol();
+	stochDKey = Symbol();
+
+	/**
+	 * Params: k, k slowing factor and d slowing factor
+	 */
+	constructor(...args) {
+		super();
+		this.periods = args;
+	}
+
+	onNewInstrument(instrument) {
+		instrument.addTransformer(
+			['high', 'low', 'close'], 
+			new Stoch(this.periods[0], this.periods[1], this.periods[2]),
+			{ stoch_k: this.stochKKey, stoch_d: this.stochDKey },
+		);
+
+	}
+
+}
+
+
 
 
 class EqualPositionSize extends Algorithm {
@@ -125,6 +156,8 @@ async function runTest() {
 		[path.join(__dirname, 'test-data/input/*.csv')],
 	);
 	backtest.setDataSource(dataSource);
+	backtest.addPerformanceIndicators(new ProfitFactor());
+	backtest.addPerformanceIndicators(new Cagr());
 
 	//backtest.addOptimization('slowSMA', [1, 3], 3);
 	//backtest.addOptimization('fastSMA', [2, 4], 3);
@@ -134,10 +167,13 @@ async function runTest() {
 	backtest.setConfiguration(config);
 
 	backtest.setStrategies((params) => {
-		return rejectOnFalse(
-			//new SMAAlgo('close', params.get('fastSMA'), params.get('slowSMA')),
-			new SMAAlgo('close', 1, 2),
-			new EqualPositionSize(),
+		return runThrough(
+			new StochIndicators(3, 1, 2),
+			rejectOnFalse(
+				//new SMAAlgo('close', params.get('fastSMA'), params.get('slowSMA')),
+				new SMAAlgo('close', 1, 2),
+				new EqualPositionSize(),
+			),
 		);
 	});
 

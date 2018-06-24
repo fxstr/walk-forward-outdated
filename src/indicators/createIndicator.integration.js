@@ -15,22 +15,35 @@ test('throws on invalid arguments', async (t) => {
 test('returns expected results (for simple sma)', async (t) => {
     const SMA = createIndicator(tulind.indicators.sma);
     const sma = new SMA(3);
-    t.deepEqual(await sma.next(3), []);
-    t.deepEqual(await sma.next(4), []);
-    t.deepEqual(await sma.next(8), [5]);
+    t.deepEqual(await sma.next(3), undefined);
+    t.deepEqual(await sma.next(4), undefined);
+    t.deepEqual(await sma.next(8), 5);
     // Check order of history
-    t.deepEqual(await sma.next(6), [6]);
+    t.deepEqual(await sma.next(6), 6);
 });
 
-test('returns expected results (for complex  ', async (t) => {
+function makeStochMap(k, d) {
+    return new Map([
+        ['stoch_k', k],
+        ['stoch_d', d],
+    ]);
+}
+
+test('returns expected results (for multi-output stoch)', async (t) => {
     const Stoch = createIndicator(tulind.indicators.stoch);
     const stoch = new Stoch(3, 1, 2); // 3, 2, 3
     // Args are high, low, close
-    t.deepEqual(await stoch.next(10, 6, 7), []);
-    t.deepEqual(await stoch.next(11, 8, 10), []);
-    t.deepEqual(await stoch.next(12, 8, 10), []); // f%k = 0.666
-    t.deepEqual(await stoch.next(10, 8, 9), [25, 45.83333333333333]); // f%k = 0.25
-    t.deepEqual(await stoch.next(13, 5, 8), [37.5, 31.25]); // f%k = 0.375
-    t.deepEqual(await stoch.next(12, 6, 8), [37.5, 37.5]); // f%k = 0.375
-    t.deepEqual(await stoch.next(11, 7, 9), [50, 43.75]); // f%k = 0.5
+    // Same numbers as in indicators.integration.js
+    t.deepEqual(await stoch.next(10, 6, 7), makeStochMap()); // makeStochMap returns 2xundefined
+    t.deepEqual(await stoch.next(11, 8, 10), makeStochMap());
+    t.deepEqual(await stoch.next(12, 8, 10), makeStochMap()); // f%k = 0.666
+    t.deepEqual(await stoch.next(10, 8, 9), makeStochMap(25, 45.83333333333333)); // f%k = 0.25
+    t.deepEqual(await stoch.next(13, 5, 8), makeStochMap(37.5, 31.25)); // f%k = 0.375
+});
+
+test('has a name and identifier', (t) => {
+    const Stoch = createIndicator(tulind.indicators.stoch);
+    //const stoch = new Stoch(5, 3, 1);
+    //t.is(Stoch.name, 'Stochastic Oscillator');
+    t.is(Stoch.identifier, 'stoch');
 });

@@ -1,4 +1,4 @@
-import csv from 'fast-csv';
+import exportToCsv from '../export-to-csv/exportToCsv';
 import debug from 'debug';
 import colors from 'colors';
 import DataSeries from '../data-series/DataSeries';
@@ -109,19 +109,7 @@ export default class DataSeriesExporter {
     storeData(dataAsArray, path) {
 
         log('Write %d entries to %s', dataAsArray[0].length, path);
-
-        return new Promise((resolve, reject) => {
-            csv
-                .writeToPath(path, dataAsArray)
-                .on('finish', () => {
-                    log('Data stored to %s', path);
-                    resolve();
-                })
-                .on('error', (err) => {
-                    log('Data could not be stored, %o', err);
-                    reject(new Error(err));
-                });
-        });
+        return exportToCsv(path, dataAsArray);
 
     }
 

@@ -27,6 +27,12 @@ export default class Backtest {
 	dataSource;
 
 	/**
+	 * Holds performance indicators that should be applied to all backtestInstances
+	 * @type {Array}
+	 */
+	performanceIndicators = [];
+
+	/**
 	 * Holds backtest instances. Key is the parameter set used, value the corresponding 
 	 * BacktestInstance
 	 * @type {Map}
@@ -80,6 +86,29 @@ export default class Backtest {
 			this.configuration.set(key, backtestConfig.get(key));
 		});
 
+	}
+
+	/**
+	 * Adds a performance indicator that will be applied to every backtestInstance
+	 * @param {object[]} indicators 		An array containing objects with properties:
+	 *                                		- name: Name of the performance indicator
+	 *                                		- indicator: Indicator to execute, is an object with a
+	 *                                		  method 'calculate' that takes a backtestInstance as an 
+	 *                                		  argument and returns the performance index's value
+	 */
+	addPerformanceIndicators(...indicators) {
+		indicators.forEach((indicator) => {
+			if (!indicator.calculate || typeof indicator.calculate !== 'function') {
+				throw new Error(`Backtest: Perofmance indicator provided does not contain a 
+					calculate property or calculate property is not a function: 
+					${ indicator.calculate }`);
+			}
+			if (!indicator.getName || typeof indicator.getName() !== 'string') {
+				throw new Error(`Backtest: Performance indicator must have a getName method that
+					returns the performance indicator's name, is ${ indicator.getName }.`);
+			}
+			this.performanceIndicators.push(indicator);
+		});
 	}
 
 
@@ -175,6 +204,8 @@ export default class Backtest {
 			const instance = new BacktestInstance(instruments, 
 				parameterizedStrategyRunner, this.configuration);
 			await instance.run();
+			await instance.calculatePerformanceIndicators(this.performanceIndicators);
+
 			this.instances.set(parameterSet, instance);
 		}
 

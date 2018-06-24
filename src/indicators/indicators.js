@@ -1,149 +1,151 @@
 import createIndicator from './createIndicator';
+import addChartConfig from './addChartConfig';
 import tulind from 'tulind';
 
 /**
 * Provides a central export for all indicators.
 * We use tulip indicators because:
 * - Performance is good (https://tulipindicators.org/benchmark)
-* - node binding contains pre-compiled windows sources (in contrast to TA-LIB, see
+* - node binding contains pre-compiled windows sources (in contrast to TA-LIB, See
 *   https://github.com/oransel/node-talib)
 */
 
 // Export statements cannot be within a loop – this must be done manually. // TODO: We could
 // have used an object and only do the export manually …
-const abs = createIndicator(tulind.indicators.abs);
-const acos = createIndicator(tulind.indicators.acos);
-const ad = createIndicator(tulind.indicators.ad);
-const add = createIndicator(tulind.indicators.add);
-const adosc = createIndicator(tulind.indicators.adosc);
-const adx = createIndicator(tulind.indicators.adx);
-const adxr = createIndicator(tulind.indicators.adxr);
-const ao = createIndicator(tulind.indicators.ao);
-const apo = createIndicator(tulind.indicators.apo);
-const aroon = createIndicator(tulind.indicators.aroon);
-const aroonosc = createIndicator(tulind.indicators.aroonosc);
-const asin = createIndicator(tulind.indicators.asin);
-const atan = createIndicator(tulind.indicators.atan);
-const atr = createIndicator(tulind.indicators.atr);
-const avgprice = createIndicator(tulind.indicators.avgprice);
+const Abs = addChartConfig(createIndicator(tulind.indicators.abs));
+const Acos = addChartConfig(createIndicator(tulind.indicators.acos));
+const Ad = addChartConfig(createIndicator(tulind.indicators.ad));
+const Add = addChartConfig(createIndicator(tulind.indicators.add));
+const Adosc = addChartConfig(createIndicator(tulind.indicators.adosc));
+const Adx = addChartConfig(createIndicator(tulind.indicators.adx));
+const Adxr = addChartConfig(createIndicator(tulind.indicators.adxr));
+const Ao = addChartConfig(createIndicator(tulind.indicators.ao));
+const Apo = addChartConfig(createIndicator(tulind.indicators.apo));
+const Aroon = addChartConfig(createIndicator(tulind.indicators.aroon));
+const Aroonosc = addChartConfig(createIndicator(tulind.indicators.aroonosc));
+const Asin = addChartConfig(createIndicator(tulind.indicators.asin));
+const Atan = addChartConfig(createIndicator(tulind.indicators.atan));
+const Atr = addChartConfig(createIndicator(tulind.indicators.atr));
+const Avgprice = addChartConfig(createIndicator(tulind.indicators.avgprice));
 
-const bbands = createIndicator(tulind.indicators.bbands);
-const bop = createIndicator(tulind.indicators.bop);
+const Bbands = addChartConfig(createIndicator(tulind.indicators.bbands));
+const Bop = addChartConfig(createIndicator(tulind.indicators.bop));
 
-const cci = createIndicator(tulind.indicators.cci);
-const ceil = createIndicator(tulind.indicators.ceil);
-const cmo = createIndicator(tulind.indicators.cmo);
-const cos = createIndicator(tulind.indicators.cos);
-const cosh = createIndicator(tulind.indicators.cosh);
-const crossany = createIndicator(tulind.indicators.crossany);
-const crossover = createIndicator(tulind.indicators.crossover);
-const cvi = createIndicator(tulind.indicators.cvi);
+const Cci = addChartConfig(createIndicator(tulind.indicators.cci));
+const Ceil = addChartConfig(createIndicator(tulind.indicators.ceil));
+const Cmo = addChartConfig(createIndicator(tulind.indicators.cmo));
+const Cos = addChartConfig(createIndicator(tulind.indicators.cos));
+const Cosh = addChartConfig(createIndicator(tulind.indicators.cosh));
+const Crossany = addChartConfig(createIndicator(tulind.indicators.crossany));
+const Crossover = addChartConfig(createIndicator(tulind.indicators.crossover));
+const Cvi = addChartConfig(createIndicator(tulind.indicators.cvi));
 
-const decay = createIndicator(tulind.indicators.decay);
-const dema = createIndicator(tulind.indicators.dema);
-const di = createIndicator(tulind.indicators.di);
-const div = createIndicator(tulind.indicators.div);
-const dm = createIndicator(tulind.indicators.dm);
-const dpo = createIndicator(tulind.indicators.dpo);
-const dx = createIndicator(tulind.indicators.dx);
+const Decay = addChartConfig(createIndicator(tulind.indicators.decay));
+const Dema = addChartConfig(createIndicator(tulind.indicators.dema));
+const Di = addChartConfig(createIndicator(tulind.indicators.di));
+const Div = addChartConfig(createIndicator(tulind.indicators.div));
+const Dm = addChartConfig(createIndicator(tulind.indicators.dm));
+const Dpo = addChartConfig(createIndicator(tulind.indicators.dpo));
+const Dx = addChartConfig(createIndicator(tulind.indicators.dx));
 
-const edecay = createIndicator(tulind.indicators.edecay);
-const ema = createIndicator(tulind.indicators.ema);
-const emv = createIndicator(tulind.indicators.emv);
-const exp = createIndicator(tulind.indicators.exp);
+const Edecay = addChartConfig(createIndicator(tulind.indicators.edecay));
+const Ema = addChartConfig(createIndicator(tulind.indicators.ema));
+const Emv = addChartConfig(createIndicator(tulind.indicators.emv));
+const Exp = addChartConfig(createIndicator(tulind.indicators.exp));
 
-const fisher = createIndicator(tulind.indicators.fisher);
-const floor = createIndicator(tulind.indicators.floor);
-const fosc = createIndicator(tulind.indicators.fosc);
+const Fisher = addChartConfig(createIndicator(tulind.indicators.fisher));
+const Floor = addChartConfig(createIndicator(tulind.indicators.floor));
+const Fosc = addChartConfig(createIndicator(tulind.indicators.fosc));
 
-const hma = createIndicator(tulind.indicators.hma);
+const Hma = addChartConfig(createIndicator(tulind.indicators.hma));
 
-const kama = createIndicator(tulind.indicators.kama);
-const kvo = createIndicator(tulind.indicators.kvo);
+const Kama = addChartConfig(createIndicator(tulind.indicators.kama));
+const Kvo = addChartConfig(createIndicator(tulind.indicators.kvo));
 
-const lag = createIndicator(tulind.indicators.lag);
-const linreg = createIndicator(tulind.indicators.linreg);
-const linregintercept = createIndicator(tulind.indicators.linregintercept);
-const linregslope = createIndicator(tulind.indicators.linregslope);
-const ln = createIndicator(tulind.indicators.ln);
-const log10 = createIndicator(tulind.indicators.log10);
+const Lag = addChartConfig(createIndicator(tulind.indicators.lag));
+const Linreg = addChartConfig(createIndicator(tulind.indicators.linreg));
+const Linregintercept = addChartConfig(createIndicator(tulind.indicators.linregintercept));
+const Linregslope = addChartConfig(createIndicator(tulind.indicators.linregslope));
+const Ln = addChartConfig(createIndicator(tulind.indicators.ln));
+const Log10 = addChartConfig(createIndicator(tulind.indicators.log10));
 
-const macd = createIndicator(tulind.indicators.macd);
-const marketfi = createIndicator(tulind.indicators.marketfi);
-const mass = createIndicator(tulind.indicators.mass);
-const max = createIndicator(tulind.indicators.max);
-const md = createIndicator(tulind.indicators.md);
-const medprice = createIndicator(tulind.indicators.medprice);
-const mfi = createIndicator(tulind.indicators.mfi);
-const min = createIndicator(tulind.indicators.min);
-const mom = createIndicator(tulind.indicators.mom);
-const msw = createIndicator(tulind.indicators.msw);
-const mul = createIndicator(tulind.indicators.mul);
+const Macd = addChartConfig(createIndicator(tulind.indicators.macd));
+const Marketfi = addChartConfig(createIndicator(tulind.indicators.marketfi));
+const Mass = addChartConfig(createIndicator(tulind.indicators.mass));
+const Max = addChartConfig(createIndicator(tulind.indicators.max));
+const Md = addChartConfig(createIndicator(tulind.indicators.md));
+const Medprice = addChartConfig(createIndicator(tulind.indicators.medprice));
+const Mfi = addChartConfig(createIndicator(tulind.indicators.mfi));
+const Min = addChartConfig(createIndicator(tulind.indicators.min));
+const Mom = addChartConfig(createIndicator(tulind.indicators.mom));
+const Msw = addChartConfig(createIndicator(tulind.indicators.msw));
+const Mul = addChartConfig(createIndicator(tulind.indicators.mul));
 
-const natr = createIndicator(tulind.indicators.natr);
-const nvi = createIndicator(tulind.indicators.nvi);
+const Natr = addChartConfig(createIndicator(tulind.indicators.natr));
+const Nvi = addChartConfig(createIndicator(tulind.indicators.nvi));
 
-const obv = createIndicator(tulind.indicators.obv);
-const ppo = createIndicator(tulind.indicators.ppo);
-const psar = createIndicator(tulind.indicators.psar);
-const pvi = createIndicator(tulind.indicators.pvi);
+const Obv = addChartConfig(createIndicator(tulind.indicators.obv));
 
-const qstick = createIndicator(tulind.indicators.qstick);
+const Ppo = addChartConfig(createIndicator(tulind.indicators.ppo));
+const Psar = addChartConfig(createIndicator(tulind.indicators.psar));
+const Pvi = addChartConfig(createIndicator(tulind.indicators.pvi));
 
-const roc = createIndicator(tulind.indicators.roc);
-const rocr = createIndicator(tulind.indicators.rocr);
-const round = createIndicator(tulind.indicators.round);
-const rsi = createIndicator(tulind.indicators.rsi);
+const Qstick = addChartConfig(createIndicator(tulind.indicators.qstick));
 
-const sin = createIndicator(tulind.indicators.sin);
-const sinh = createIndicator(tulind.indicators.sinh);
-const sma = createIndicator(tulind.indicators.sma);
-const sqrt = createIndicator(tulind.indicators.sqrt);
-const stddev = createIndicator(tulind.indicators.stddev);
-const stderr = createIndicator(tulind.indicators.stderr);
-const stoch = createIndicator(tulind.indicators.stoch);
-const sub = createIndicator(tulind.indicators.sub);
-const sum = createIndicator(tulind.indicators.sum);
+const Roc = addChartConfig(createIndicator(tulind.indicators.roc));
+const Rocr = addChartConfig(createIndicator(tulind.indicators.rocr));
+const Round = addChartConfig(createIndicator(tulind.indicators.round));
+const Rsi = addChartConfig(createIndicator(tulind.indicators.rsi));
 
-const tan = createIndicator(tulind.indicators.tan);
-const tanh = createIndicator(tulind.indicators.tanh);
-const tema = createIndicator(tulind.indicators.tema);
-const todeg = createIndicator(tulind.indicators.todeg);
-const torad = createIndicator(tulind.indicators.torad);
-const tr = createIndicator(tulind.indicators.tr);
-const trima = createIndicator(tulind.indicators.trima);
-const trix = createIndicator(tulind.indicators.trix);
-const trunc = createIndicator(tulind.indicators.trunc);
-const tsf = createIndicator(tulind.indicators.tsf);
-const typprice = createIndicator(tulind.indicators.typprice);
+const Sin = addChartConfig(createIndicator(tulind.indicators.sin));
+const Sinh = addChartConfig(createIndicator(tulind.indicators.sinh));
+const Sma = addChartConfig(createIndicator(tulind.indicators.sma));
+const Sqrt = addChartConfig(createIndicator(tulind.indicators.sqrt));
+const Stddev = addChartConfig(createIndicator(tulind.indicators.stddev));
+const Stderr = addChartConfig(createIndicator(tulind.indicators.stderr));
+const Stoch = addChartConfig(createIndicator(tulind.indicators.stoch));
+const Sub = addChartConfig(createIndicator(tulind.indicators.sub));
+const Sum = addChartConfig(createIndicator(tulind.indicators.sum));
 
-const ultosc = createIndicator(tulind.indicators.ultosc);
+const Tan = addChartConfig(createIndicator(tulind.indicators.tan));
+const Tanh = addChartConfig(createIndicator(tulind.indicators.tanh));
+const Tema = addChartConfig(createIndicator(tulind.indicators.tema));
+const Todeg = addChartConfig(createIndicator(tulind.indicators.todeg));
+const Torad = addChartConfig(createIndicator(tulind.indicators.torad));
+const Tr = addChartConfig(createIndicator(tulind.indicators.tr));
+const Trima = addChartConfig(createIndicator(tulind.indicators.trima));
+const Trix = addChartConfig(createIndicator(tulind.indicators.trix));
+const Trunc = addChartConfig(createIndicator(tulind.indicators.trunc));
+const Tsf = addChartConfig(createIndicator(tulind.indicators.tsf));
+const Typprice = addChartConfig(createIndicator(tulind.indicators.typprice));
+
+const Ultosc = addChartConfig(createIndicator(tulind.indicators.ultosc));
 
 // One exception: var becomes 
-const variance = createIndicator(tulind.indicators.var);
-const vhf = createIndicator(tulind.indicators.vhf);
-const vidya = createIndicator(tulind.indicators.vidya);
-const volatility = createIndicator(tulind.indicators.volatility);
-const vosc = createIndicator(tulind.indicators.vosc);
-const vwma = createIndicator(tulind.indicators.vwma);
+const Variance = addChartConfig(createIndicator(tulind.indicators.var));
+const Vhf = addChartConfig(createIndicator(tulind.indicators.vhf));
+const Vidya = addChartConfig(createIndicator(tulind.indicators.vidya));
+const Volatility = addChartConfig(createIndicator(tulind.indicators.volatility));
+const Vosc = addChartConfig(createIndicator(tulind.indicators.vosc));
+const Vwma = addChartConfig(createIndicator(tulind.indicators.vwma));
 
-const wad = createIndicator(tulind.indicators.wad);
-const wcprice = createIndicator(tulind.indicators.wcprice);
-const wilders = createIndicator(tulind.indicators.wilders);
-const willr = createIndicator(tulind.indicators.willr);
-const wma = createIndicator(tulind.indicators.wma);
+const Wad = addChartConfig(createIndicator(tulind.indicators.wad));
+const Wcprice = addChartConfig(createIndicator(tulind.indicators.wcprice));
+const Wilders = addChartConfig(createIndicator(tulind.indicators.wilders));
+const Willr = addChartConfig(createIndicator(tulind.indicators.willr));
+const Wma = addChartConfig(createIndicator(tulind.indicators.wma));
 
-const zlema = createIndicator(tulind.indicators.zlema);
-
-
+const Zlema = addChartConfig(createIndicator(tulind.indicators.zlema));
 
 
-export { abs, acos, ad, add, adosc, adx, adxr, ao, apo, aroon, aroonosc, asin, atan, atr, avgprice, 
-    bbands, bop, cci, ceil, cmo, cos, cosh, crossany, crossover, cvi, decay, dema, di, div, dm, dpo, 
-    dx, edecay, ema, emv, exp, fisher, floor, fosc, hma, kama, kvo, lag, linreg, linregintercept,
-    linregslope, ln, log10, macd, marketfi, mass, max, md, medprice, mfi, min, mom, msw, mul, natr,
-    nvi, obv, ppo, psar, pvi, qstick, roc, rocr, round, rsi, sin, sinh, sma, sqrt, stddev, stderr, 
-    stoch, sub, sum, tan, tanh, tema, todeg, torad, tr, trima, trix, trunc, tsf, typprice, ultosc,
-    variance, vhf, vidya, volatility, vosc, vwma, wad, wcprice, wilders, willr, wma, zlema };
+
+
+export { Abs, Acos, Ad, Add, Adosc, Adx, Adxr, Ao, Apo, Aroon, Aroonosc, Asin, Atan, Atr, Avgprice, 
+    Bbands, Bop, Cci, Ceil, Cmo, Cos, Cosh, Crossany, Crossover, Cvi, Decay, Dema, Di, Div, Dm, Dpo, 
+    Dx, Edecay, Ema, Emv, Exp, Fisher, Floor, Fosc, Hma, Kama, Kvo, Lag, Linreg, Linregintercept,
+    Linregslope, Ln, Log10, Macd, Marketfi, Mass, Max, Md, Medprice, Mfi, Min, Mom, Msw, Mul, Natr,
+    Nvi, Obv, Ppo, Psar, Pvi, Qstick, Roc, Rocr, Round, Rsi, Sin, Sinh, Sma, Sqrt, Stddev, Stderr, 
+    Stoch, Sub, Sum, Tan, Tanh, Tema, Todeg, Torad, Tr, Trima, Trix, Trunc, Tsf, Typprice, Ultosc,
+    Variance, Vhf, Vidya, Volatility, Vosc, Vwma, Wad, Wcprice, Wilders, Willr, Wma, Zlema };
 
 

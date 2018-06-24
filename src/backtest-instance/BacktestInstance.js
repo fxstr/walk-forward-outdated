@@ -31,6 +31,13 @@ export default class BacktestInstance {
     accounts = new DataSeries();
 
 
+    /**
+     * Holds results of performanceIndicators if they are executed through 
+     * calculatePerformanceIndicators
+     * @type {Map}
+     */
+    performanceResults = new Map();
+
 
     /**
     * @πaram {BacktestInstruments} instruments          Instruments to run backtest on.
@@ -211,6 +218,21 @@ export default class BacktestInstance {
         // Delete all orders – they're good for 1 bar only
         this.orders = [];
 
+    }
+
+
+    /**
+     * Calculate this instance's performance index results for every performance index passed 
+     * (see Backtest)
+     * @param  {object[]} indicators Indicators to execute; has two methods:
+     *                               - calculate()
+     *                               - getName()
+     */
+    async calculatePerformanceIndicators(indicators) {
+        for (const indicator of indicators) {
+            const result = await indicator.calculate(this);
+            this.performanceResults.set(indicator.getName(), result);
+        }
     }
 
 

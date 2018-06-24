@@ -121,7 +121,7 @@ function generateTransformers() {
 		constructor(summand) {
 			this.summand = summand;
 		}
-		next(data) {
+		next(...data) {
 			// Sums up all key values and adds this.summand
 			return data.reduce((prev, val) => prev + val, this.summand);
 		}
@@ -132,7 +132,7 @@ function generateTransformers() {
 			this.time = time;
 			this.summand = summand;
 		}
-		async next(data) {
+		async next(...data) {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return data.reduce((prev, val) => prev + val, this.summand);
 		}
@@ -143,7 +143,7 @@ function generateTransformers() {
 		constructor(summands) {
 			this.summands = summands;
 		}
-		next(data) {
+		next(...data) {
 			return this.summands.reduce((prev, item) => {
 				prev.set('add' + item, data[0] + item);
 				return prev;
@@ -152,7 +152,7 @@ function generateTransformers() {
 	}
 	// Adds up all passed dependencies into one value (string!)
 	class MultipleIntoOneTransformer {
-		next(data) {
+		next(...data) {
 			return data.reduce((prev, val) => prev + val, '');
 		}
 	}
@@ -178,7 +178,7 @@ test('calls transformer\'s next method with correct parameters', async (t) => {
 	await ds.add({ open: 2, close: 4 });
 	await ds.add({ close: 5, open: 3 });
 	// Called once per row
-	t.deepEqual(allParams, [[[2, 4]], [[3, 5]]]);
+	t.deepEqual(allParams, [[2, 4], [3, 5]]);
 });
 
 
@@ -265,7 +265,7 @@ test('fails if not all keys were provided (single return value)', async (t) => {
 	const ds = new TransformableDataSeries();
 	ds.addTransformer(['open'], new WithKey());
 	const err = await t.throws(ds.add({ open: 4 }));
-	t.is(err.message.includes('You need to specify a key'), true);
+	t.is(err.message.includes('Single key missing'), true);
 });
 
 

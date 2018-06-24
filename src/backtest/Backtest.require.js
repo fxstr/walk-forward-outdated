@@ -273,6 +273,39 @@ test('run returns the instances', async (t) => {
 
 
 
+
+
+// PERFORMANCE INDICATORS
+
+test('adds performanceIndicators', (t) => {
+	const bt = new Backtest();
+	t.throws(() => bt.addPerformanceIndicators({}), /calculate property/);
+	t.throws(() => bt.addPerformanceIndicators({ calculate: null }), /calculate property/);
+	t.throws(() => bt.addPerformanceIndicators({ calculate: () => {} }), /indicator's name/);
+	t.notThrows(() => bt.addPerformanceIndicators({ calculate: () => {}, getName: () => '' }));
+});
+
+test('executes performanceIndicators', async (t) => {
+	const bt = new Backtest();
+	const { dataSource, strategy } = setupData();
+	bt.setStrategies(strategy);
+	bt.setDataSource(dataSource);
+	class PI {
+		getName() { return 'testPI'; }
+		calculate() { return new Promise((resolve) => resolve(3.5)); }
+	}
+	bt.addPerformanceIndicators(new PI());
+	const results = await bt.run();
+	results.forEach((result) => {
+		console.log('result', result);
+		t.is(result.performanceResults.get('testPI'), 3.5);
+	});
+});
+
+
+
+
+
 /*test('runs a real backtest', async (t) => {
 	const bt = new Backtest();
 	const { dataSource } = setupData([

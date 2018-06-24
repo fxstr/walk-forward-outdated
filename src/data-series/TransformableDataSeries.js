@@ -135,7 +135,7 @@ export default class TransformableDataSeries extends DataSeries {
 
 		// For params of next(), see addTransformer; DO NOT PASS more data if not absolutely needed
 		// as we want to have stateless/simple transformers
-		const transformerResult = await transformer.transformer.next(data);
+		const transformerResult = await transformer.transformer.next(...data);
 		log('Executed transformer; result is %o, data was %o', transformerResult, data);
 		this.executedTransformers.push(transformer.transformer);
 
@@ -198,31 +198,30 @@ export default class TransformableDataSeries extends DataSeries {
 
 		// Result is an object (and not a Map): Convert it to a Map for easier handling
 		if (typeof result === 'object' && result !== null && !(result instanceof Map)) {
-			const intermediateResult = convertObjectToMap(result);
-			for (const [key, value] of intermediateResult) {
-				rowData.set(transformer.keys[key], value);
-			}
+			const result = convertObjectToMap(result);
 		}
+
 		// Result is a map: Change key from key passed by transformer to key passed to 
 		// addTransformer
-		else if (result instanceof Map) {
+		if (result instanceof Map) {
 			for (const [key, value] of result) {
+				if (transformer.keys[key] === undefined) {
+					throw new Error(`TransformableDataSeries: You need to specify a key for every 
+						result a transformer returns (as an argument for addTransformer()). 
+						The key for ${ key } is missing.`);
+				}
 				rowData.set(transformer.keys[key], value);
 			}
 		}
 		// Result is something else than an object or a Map: Convert it to a map with a single 
 		// entry.
 		else {
+			if (!transformer.keys) throw new Error(`TransformableDataSeries: Single key missing.`);
 			rowData.set(transformer.keys, result);
 		}
 
-		// Check keys of rowData
+		// Add keys to columns (if not done yet)
 		for (const [resultKey] of rowData) {
-			if (!resultKey) {
-				throw new Error(`TransformableDataSeries: You need to specify a key for every 
-					result a transformer returns (as an argument for addTransformer()). 
-					The key for ${ resultKey } is missing.`);
-			}
 			if (!this.columns.has(resultKey)) newCols.push(resultKey);
 		}
 

@@ -25,6 +25,15 @@ test('exports', async (t) => {
     fs.unlinkSync(target);
 });
 
+test('exports date as ISO string', async (t) => {
+    const target = path.join(getDir(), 'success.csv');
+    await (exportToCsv(target, [['a', 'b'], [1, new Date(2018, 0, 1)]]));
+    const written = await fs.readFileSync(target, 'utf8');
+    // TODO: Use time zone independent dates
+    t.is(written, 'a,b\n1,2017-12-31T23:00:00.000Z');
+    fs.unlinkSync(target);
+});
+
 test('fails', async (t) => {
     const target = path.join(getDir(), 'does-not-exist', 'fail.csv');
     await t.throws(exportToCsv(target, [['a', 'b'], [1, 2]]));

@@ -13,7 +13,12 @@ export default function(path, dataAsArray) {
 
     return new Promise((resolve, reject) => {
         csv
-            .writeToPath(path, dataAsArray)
+            .writeToPath(path, dataAsArray, {
+                transform: (row) => {
+                    // Transform dates to ISO string; default JS toString is hardly parsable
+                    return row.map((field) => field instanceof Date ? field.toISOString() : field);
+                }
+            })
             .on('finish', () => {
                 log('Data stored to %s', path);
                 resolve();

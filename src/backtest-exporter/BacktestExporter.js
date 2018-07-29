@@ -96,7 +96,7 @@ export default class BacktestExporter {
 
 
     /**
-     * Exports a signle instrument's data (that belongs to a certain instance).
+     * Exports a single instrument's data (that belongs to a certain instance).
      * @param  {Instrument} instrument 
      * @param  {string} basePath         Path to export file to; file name is instrument's name.
      * @private

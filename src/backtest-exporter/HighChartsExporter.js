@@ -1,10 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Quick win: Just export a data structure that highcharts will understand to simplify things. 
+ * Code's not nice or tested. 
+ * TODO: Move to a more abstract/generalized data format
+ */
 export default class HighChartsExporter {
 
     /**
-     * Quick win: Just export a data structure that highcharts will understand to simplify things
      * @param  {[type]} instrument [description]
      * @return {[type]}            [description]
      */
@@ -48,80 +52,71 @@ export default class HighChartsExporter {
 
 
         // Every transformer added to instrument has its own chart viewConfig – go through them
+        // and create configs for charts
         instrument.viewConfig.chart.forEach((chartConfig) => {
+
+            console.log('chart config is %o', chartConfig);
 
             // Assumption: If chartConfig contains data for a chart, every transformer gets a 
             // *new* chart (new yAxis). If it's missing, use main chart.
             charts.push({
-                id: chartIdCounter++,
-                height: chartConfig.config.height,
+                // Use string as identifier; number would be interpreted as index
+                id: '' + (chartIdCounter += 1) , 
+                height: chartConfig.config.chart.height,
                 title: {
-                    text: chartConfig.config.name,
+                    text: chartConfig.config.chart.name,
                 },
                 // Store original transformer to later map columns/series to charts
                 columns: chartConfig.columns,
             });                    
             // Default chart height is 1
-            totalChartHeight += chartConfig.height || 1;
+            totalChartHeight += chartConfig.config.chart.height || 1;
 
         });
+
+
+        console.log('charts are %o', charts);
 
 
         // Go through all columns (and not the viewConfigs as we might miss some columns that 
         // were added without config)
         for (const [key] of instrument.columns) {
+
             // ohlc are done, date has its own axis
             const colsToIgnore = ['open', 'high', 'low', 'close', 'date'];
             if (colsToIgnore.includes(key)) continue;
 
-            // Check if we have a chartConfig for current column; chartConfig is an entry in charts
-            // created above
-            const chartConfig = instrument.viewConfig.chart.find((config) => {
-                console.log('key %o chartConfig %o', key, config.columns)
-                // columns can either be a symbol/string or an object (if indicator returns 
-                // multiple values)
-                return config.columns === key || config.columns[key] !== undefined;
-            });
+            const { chartConfig, seriesConfig } = this.getConfigFromViewConfig(
+                instrument.viewConfig.chart,
+                key,
+            );
+
+            console.log('seriesConfig: %o, chartConfig %o', seriesConfig, chartConfig);
 
             // Convert data to a format that we can use for series
             const seriesData = instrument.data
+                // Remove all empty rows
                 .filter((row) => row.get(key) !== undefined)
+                // Object -> Array
                 .map((row) => [row.get('date').getTime(), row.get(key)]);
 
+            const chartId = chartConfig ? charts.find((chart) => {
+                // OHLC doesn't have a columns field
+                if (!chart.columns) return false; 
+                // Check if any column in chartConfig includes the current column
+                return Object.values(chart.columns).includes(key);
+            }).id : 'main';
 
-            console.log('Found chartConfig %o for key %o', chartConfig, key);
-            // Column has its own chartConfig
-            if (chartConfig) {
+            const spreadableSeriesConfig = seriesConfig || {};
+            series.push({
+                ...spreadableSeriesConfig,
+                //type: seriesConfig && seriesConfig.type ? seriesConfig.type : 'line',
+                //color: seriesConfig && seriesConfig.color ? seriesConfig.color : 'black',
+                data: seriesData, 
+                yAxis: chartId,
+            });
 
-                // Get configuration object for current series/column.
-                // If transformer returned just one value, we can use the value of the first entry 
-                // in chartConfig.series
-                let seriesConfig = Array.from(chartConfig.series)[0][1];
-                // If transformer returned multiple values, get correct entry in chartConfig.series
-                if (typeof chartConfig.columns === 'object' && chartConfig.columns !== null) {
-                    // columns is an object with { originalName: newName }, key corresponds to 
-                    // newName – now get the originalName
-                    const originalColName = Object.keys(chartConfig.columns)
-                        .find((columnKey) => chartConfig.columns[columnKey] === key);
-                    seriesConfig = chartConfig.series.get(originalColName);
-                }
-                console.log('seriesConfig', seriesConfig);
-
-                series.push({
-                    type: seriesConfig.type || 'line',
-                    data: seriesData,
-                    yAxis: chartConfig.id,
-                });
-            }
-
-            // There is no chartConfig for this column: use defaults
-            else {
-                series.push({
-                    type: 'line',
-                    data: seriesData,
-                    yAxis: 'main',
-                });
-            }
+            console.log('chart&seriesConfig', chartConfig, seriesConfig);
 
         }
 
@@ -129,15 +124,21 @@ export default class HighChartsExporter {
         // Update heights (from relations to percentages)
         charts.reduce((prev, chart) => {
             const height = chart.height / totalChartHeight;
-            chart.height = (height * 100) + '%';
-            chart.top = (prev * 100) + '%';
+            console.log('height %o of %o', chart.height, totalChartHeight);
+            chart.height = Math.floor(height * 100) + '%';
+            chart.top = Math.floor(prev * 100) + '%';
             return prev + height;
         }, 0);
 
 
+        // Remove all columns from chart (were only needed for mapping between charts and
+        // series)
+        charts.forEach((chart) => delete chart.columns);
+
+
         const finalData = {
             series: series,
-            charts: charts,
+            yAxis: charts,
         };
 
 
@@ -149,16 +150,73 @@ export default class HighChartsExporter {
 
     }
 
+
+
+
     /**
-     * In TransformableDataSeries, transformers and key maps are stored. Use key map to reverse-
-     * engineer the original key used by Transformer
+     * Find key of current column in 
+     * @returns {object}        Properties: chartConfig, seriesConfig
      * @private
      */
-    /*getTransformerKey(instrument, transformer, key) {
-        instrument.transformers.forEach((transformer) => {
+    getConfigFromViewConfig(viewConfigs, key) {
+
+        let result = {};
+
+        // Find column config belonging to key in viewConfig[].columns
+        viewConfigs.find((viewConfig) => {
+
+            if (!viewConfig.hasOwnProperty('columns')) {
+                throw new Error(`HighChartsExporter: Columns property missing in viewConfig for
+                    ${ JSON.stringify(viewConfig) }.`);
+            } 
+
+            if (!viewConfig.config) {
+                throw new Error(`HighChartsExporter: Config property missing in viewConfig for 
+                    ${ JSON.stringify(viewConfig) }.`);
+            }
+
+            const config = viewConfig.config;
+
+            // columns is an object
+            if (typeof viewConfig.columns === 'object' && viewConfig.columns !== null) {
+
+                const found = Object.keys(viewConfig.columns).find((originalColName) => {
+                    console.log('key map', originalColName, viewConfig.columns[originalColName]);
+                    if (viewConfig.columns[originalColName] === key) {
+                        console.log('key found, is %o, conf is %o', originalColName, viewConfig);
+                        console.log('SERIES', config.series, originalColName);
+                        result = {
+                            chartConfig: config.chart,
+                            seriesConfig: config.series ? 
+                                config.series.get(originalColName) : undefined,
+                        };
+                        return true; // Found, break find loop
+                    }
+                });
+
+                if (found) return true;
+
+            } 
+
+            // columns is something else (not an object); check if it equals key
+            else {
+                if (viewConfig.columns === key ) {
+                    result = {
+                        chartConfig: config.chart,
+                        // If transformer returned just one value, we can use the value of the first entry 
+                        // in config.series
+                        seriesConfig: Array.from(config.series)[0][1],
+                    };
+                    return true;
+                }
+            }
 
         });
-    }*/
 
+        return result;
+
+    }
 
 }
+
+

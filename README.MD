@@ -1,3 +1,7 @@
+# Not ready for use, still in development
+
+Expect a first release in autumn 2018. By then, the code and API should be in a somewhat stable mode and docs should reflect the current state. 
+
 # Walk Forward
 
 Walk Forward is a framework that lets you backtest your trading strategies (stocks, futures, forex, crypto currencies, …). It is completely written in JavaScript.

@@ -49,8 +49,9 @@ export default async function runAlgorithms(originalParams, algos, methodName, h
 	// haltOnFalse is set) with the parameters provided
 	for (const algo of algos) {
 		// Algo doesn't have method of name methodName
-		if (!algo[methodName] || typeof algo[methodName] !== 'function') throw new Error(`
-			runAlgorithms: Algorithm doesn't have a ${ methodName }() method.`);
+		if (!algo[methodName] || typeof algo[methodName] !== 'function') {
+			throw new Error(`runAlgorithms: Algorithm doesn't have a ${methodName}() method.`);
+		}
 
 		log('Run algorithm %o with params %o', algo, params);
 		const result = await algo[methodName](...params);
@@ -67,5 +68,6 @@ export default async function runAlgorithms(originalParams, algos, methodName, h
 		}
 	}
 	// Return first parameter passed (orders)
+	log('Return orders %o', params[0]);
 	return params[0];
 }

@@ -1,0 +1,35 @@
+{
+  "series": [
+    {
+      "type": "ohlc",
+      "name": "myOwnName",
+      "data": [
+        [
+          1514761200000,
+          5,
+          7,
+          4,
+          5
+        ],
+        [
+          1514847600000,
+          5,
+          8,
+          5,
+          6
+        ]
+      ],
+      "yAxis": "main-chart"
+    }
+  ],
+  "yAxis": [
+    {
+      "id": "main-chart",
+      "height": "90%",
+      "title": {
+        "text": "OHLC"
+      },
+      "top": "0%"
+    }
+  ]
+}

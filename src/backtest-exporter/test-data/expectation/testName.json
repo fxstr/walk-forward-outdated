@@ -1,0 +1,125 @@
+{
+  "series": [
+    {
+      "type": "ohlc",
+      "name": "testName",
+      "data": [
+        [
+          1514761200000,
+          5,
+          7,
+          4,
+          5
+        ],
+        [
+          1514847600000,
+          5,
+          8,
+          5,
+          6
+        ]
+      ],
+      "yAxis": "main-chart"
+    },
+    {
+      "yAxis": "main-chart",
+      "data": [
+        [
+          1514761200000,
+          7
+        ],
+        [
+          1514847600000,
+          8
+        ]
+      ],
+      "name": "normalAddition"
+    },
+    {
+      "type": "line",
+      "color": "red",
+      "name": "mainAddition",
+      "yAxis": "main-chart",
+      "data": [
+        [
+          1514761200000,
+          8
+        ],
+        [
+          1514847600000,
+          9
+        ]
+      ]
+    },
+    {
+      "name": "otherAddition",
+      "yAxis": "1",
+      "data": [
+        [
+          1514761200000,
+          6
+        ],
+        [
+          1514847600000,
+          7
+        ]
+      ]
+    },
+    {
+      "color": "blue",
+      "yAxis": "2",
+      "data": [
+        [
+          1514761200000,
+          6
+        ],
+        [
+          1514847600000,
+          7
+        ]
+      ],
+      "name": "add1Key"
+    },
+    {
+      "color": "gray",
+      "yAxis": "2",
+      "data": [
+        [
+          1514761200000,
+          7
+        ],
+        [
+          1514847600000,
+          8
+        ]
+      ],
+      "name": "add2Key"
+    }
+  ],
+  "yAxis": [
+    {
+      "id": "main-chart",
+      "height": "46%",
+      "title": {
+        "text": "OHLC"
+      },
+      "top": "0%"
+    },
+    {
+      "title": {
+        "text": "AdditionOtherChartTransformerChart"
+      },
+      "height": "11%",
+      "id": "1",
+      "top": "51%"
+    },
+    {
+      "title": {
+        "text": "multiSummand"
+      },
+      "height": "27%",
+      "id": "2",
+      "top": "67%"
+    }
+  ]
+}

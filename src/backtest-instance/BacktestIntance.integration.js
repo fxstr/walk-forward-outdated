@@ -2,6 +2,7 @@ import test from 'ava';
 import createTestData from '../helpers/createTestData';
 import BacktestInstance from './BacktestInstance';
 import Algorithm from '../algorithm/Algorithm';
+import { runThrough } from '../runners/runners';
 import Instrument from '../instrument/Instrument';
 import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
 
@@ -37,40 +38,41 @@ test('fails if orders is not an array', async (t) => {
 	}
 	const { instruments, config } = setupData();
 	const bt1 = new BacktestInstance(instruments, new OrderGenerator(), config);
-	const err = await t.throws(bt1.run());
-	t.is(err.message.includes('returned invalid orders'), true);
+	await t.throwsAsync(() => bt1.run(), /returned invalid orders/);
 });
 
 
 test('fails if order data is not valid', async (t) => {
-	const { instruments, config } = setupData();
+
+    // Instrument missing
+    class NoInstrumentGenerator extends Algorithm {
+        onClose() {
+            return [{ size: 2 }];
+        }
+    }
+
 	// Invalid size
-	class OrderGenerator1 extends Algorithm {
+	class InvalidSizeGenerator extends Algorithm {
 		onClose() {
-			return [{ size: 'name' }];
+			return [{ size: 'name', instrument: 2 }];
 		}
 	}
-	// Instrument missing
-	class OrderGenerator2 extends Algorithm {
-		onClose() {
-			return [{ size: 2 }];
-		}
-	}
+
 	// Size missing
-	class OrderGenerator3 extends Algorithm {
+	class NoSizeGenerator extends Algorithm {
 		onClose() {
 			return [{ instrument: 2 }];
 		}
 	}
-	const bt1 = new BacktestInstance(instruments, new OrderGenerator1(), config);
-	const err1 = await t.throws(bt1.run());
-	const bt2 = new BacktestInstance(instruments, new OrderGenerator2(), config);
-	const err2 = await t.throws(bt2.run());
-	const bt3 = new BacktestInstance(instruments, new OrderGenerator3(), config);
-	const err3 = await t.throws(bt3.run());
-	t.is(err1.message.indexOf('which is a number') > -1, true);
-	t.is(err2.message.indexOf('which is a number') > -1, true);
-	t.is(err3.message.indexOf('which is a number') > -1, true);
+
+	const bt1 = new BacktestInstance(setupData().instruments, new NoInstrumentGenerator(), setupData().config);
+	await t.throwsAsync(() => bt1.run(), /must have an instrument property/);
+
+	const bt2 = new BacktestInstance(setupData().instruments, new NoSizeGenerator(), setupData().config);
+    await t.throwsAsync(() => bt2.run(), /order must have an size property/);
+
+	const bt3 = new BacktestInstance(setupData().instruments, new InvalidSizeGenerator(), setupData().config);
+    await t.throwsAsync(() => bt3.run(), /size property must be a number/);
 });
 
 
@@ -98,30 +100,68 @@ test('awaits orderGenerator', async (t) => {
 });
 
 
+/* test('updates orders correctly', async (t) => {
+    // We want to make sure bt.setOrders is only called once (by runThrough) and not by every
+    // Algorithm
+    const rawData = [
+        ['aapl', 1, 10, 11],
+    ];
+    class OrderGenerator1 extends Algorithm {
+        onClose(orders, instrument) {
+            return [{ instrument: instrument, size: 5 }];
+        }
+    }
+    const { instruments } = setupData(rawData);
+    const config = new Map([['cash', () => 1000]]);
+    const runner = runThrough(new OrderGenerator1());
+    const bt = new BacktestInstance(instruments, runner, config);
+
+    // Create a spy for setOrders
+    const calls = [];
+    const originalFunction = bt.setOrders;
+    bt.setOrders = function(...args) {
+        calls.push(args);
+        console.log('Args are %o', args);
+        return originalFunction.call(bt, ...args);
+    };
+
+    await bt.run();
+    
+    t.is(calls.length, 1);
+    t.deepEqual(calls[0], { instrument: instruments.instruments[0], size: 5 });
+
+}); */
+
+
 test('calls orderGenerator with corret parameters', async (t) => {
-    let orderGeneratorParams;
+    const orderGeneratorParams = [];
     class OrderGenerator extends Algorithm {
         onClose(...params) {
-            orderGeneratorParams = params;
+            orderGeneratorParams.push(params);
             return [];
         }
     }
     const { instruments, config } = setupData();
     const bt = new BacktestInstance(instruments, new OrderGenerator(), config);
     await bt.run();
-    t.is(orderGeneratorParams.length, 2);
+
+    t.is(orderGeneratorParams.length, 1);
+
+    // Data for aapl on first day
+    const firstParam = orderGeneratorParams[0];
+    t.is(firstParam.length, 2);
     // First param: orders (empty array)
-    t.deepEqual(orderGeneratorParams[0], []);
+    t.deepEqual(firstParam[0], []);
     // Second param: Instrument
-    t.is(orderGeneratorParams[1] instanceof Instrument, true);
-    t.is(orderGeneratorParams[1].head().get('open'), 10);
-    t.is(orderGeneratorParams[1].head().get('close'), 11);
-    t.deepEqual(orderGeneratorParams[1].head().get('date'), new Date(2018, 0, 1));
-    t.deepEqual(orderGeneratorParams[1].name, 'aapl');
+    t.is(firstParam[1] instanceof Instrument, true);
+    t.is(firstParam[1].head().get('open'), 10);
+    t.is(firstParam[1].head().get('close'), 11);
+    t.deepEqual(firstParam[1].head().get('date'), new Date(2018, 0, 1));
+    t.deepEqual(firstParam[1].name, 'aapl');
 });
 
 
-test('calls onNewInstrument when they are initialized', async (t) => {
+test('calls onNewInstrument and onClose in correct order', async (t) => {
 
     const rawData = [
         ['aapl', 1, 3, 2],
@@ -151,5 +191,40 @@ test('calls onNewInstrument when they are initialized', async (t) => {
     t.is(events[2].instrument.name, '0700');
 
 });
+
+
+
+
+test('handles orders correctly', async (t) => {
+
+    const rawData = [
+        ['aapl', 3, 3, 4],
+    ];
+
+    class OrderGenerator extends Algorithm {
+        onClose(orders, instrument) {
+            return [{ instrument, size: 3 }];
+        }
+    }
+    class EnlargeOrder extends Algorithm {
+        onClose(orders) {
+            orders.forEach(order => order.size += 2);
+            return orders;
+        }
+    }
+
+    const { instruments, config } = setupData(rawData);
+    const bt = new BacktestInstance(
+        instruments,
+        runThrough(new OrderGenerator(), new EnlargeOrder),
+        config
+    );
+    await bt.run();
+
+    t.deepEqual(bt.orders, [{ instrument: instruments.instruments[0], size: 5 }]);
+
+});
+
+
 
 

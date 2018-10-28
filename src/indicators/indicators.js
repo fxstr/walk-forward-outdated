@@ -104,6 +104,7 @@ const Sqrt = addChartConfig(createIndicator(tulind.indicators.sqrt));
 const Stddev = addChartConfig(createIndicator(tulind.indicators.stddev));
 const Stderr = addChartConfig(createIndicator(tulind.indicators.stderr));
 const Stoch = addChartConfig(createIndicator(tulind.indicators.stoch));
+const StochRSI = addChartConfig(createIndicator(tulind.indicators.stochrsi));
 const Sub = addChartConfig(createIndicator(tulind.indicators.sub));
 const Sum = addChartConfig(createIndicator(tulind.indicators.sum));
 
@@ -145,7 +146,8 @@ export { Abs, Acos, Ad, Add, Adosc, Adx, Adxr, Ao, Apo, Aroon, Aroonosc, Asin, A
     Dx, Edecay, Ema, Emv, Exp, Fisher, Floor, Fosc, Hma, Kama, Kvo, Lag, Linreg, Linregintercept,
     Linregslope, Ln, Log10, Macd, Marketfi, Mass, Max, Md, Medprice, Mfi, Min, Mom, Msw, Mul, Natr,
     Nvi, Obv, Ppo, Psar, Pvi, Qstick, Roc, Rocr, Round, Rsi, Sin, Sinh, Sma, Sqrt, Stddev, Stderr, 
-    Stoch, Sub, Sum, Tan, Tanh, Tema, Todeg, Torad, Tr, Trima, Trix, Trunc, Tsf, Typprice, Ultosc,
-    Variance, Vhf, Vidya, Volatility, Vosc, Vwma, Wad, Wcprice, Wilders, Willr, Wma, Zlema };
+    Stoch, StochRSI, Sub, Sum, Tan, Tanh, Tema, Todeg, Torad, Tr, Trima, Trix, Trunc, Tsf, Typprice, 
+    Ultosc, Variance, Vhf, Vidya, Volatility, Vosc, Vwma, Wad, Wcprice, Wilders, Willr, Wma, Zlema
+};
 
 

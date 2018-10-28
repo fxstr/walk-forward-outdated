@@ -60,13 +60,40 @@ export default class BacktestInstance {
     * Sets up the handlers for every instrument and runs through the instruments
     */
     async run() {
+
         log('Run; instruments are %o', this.instruments);
-        // Set backtest on runner functions; will watch newInstrument and onClose
-        if (typeof this.runner.setBacktest === 'function') this.runner.setBacktest(this);
+
+        if (typeof this.runner.setBacktest === 'function') this.runner.setBacktest(this, true);
+
+        if (typeof this.runner.onNewInstrument === 'function') {
+            this.instruments.on('newInstrument', this.runner.onNewInstrument.bind(this.runner));
+        }
+
+        if (typeof this.runner.onClose === 'function') {
+            this.instruments.on(
+                'close',
+                async (ev) => {
+                    log('close event caught, event data is %o', ev);
+                    // First param: orders (empty at the beginning), second param: instrument that 
+                    // fired onClose
+                    const orders = await this.runner.onClose([], ev.instrument);
+                    log(
+                        'BacktestInstance: Runner function called for data %o on instrument %o, orders are %o. Update orders.',
+                        ev.data,
+                        ev.instrument.name,
+                        orders,
+                    );
+                    this.setOrders(orders);
+                }
+            );
+        }
+
         this.instruments.on('afterClose', this.handleAfterClose.bind(this));
         this.instruments.on('afterOpen', this.handleAfterOpen.bind(this));
+
         await this.instruments.run();
         log('Account is %o', this.accounts.data);
+
     }
 
 
@@ -74,6 +101,7 @@ export default class BacktestInstance {
      * When orders are created on onClose of a runner, they must be passed to backtest to be 
      * executed.
      * @param {array} orders    Orders to execute
+     * @private
      */
     setOrders(orders) {
         this.validateOrders(orders);
@@ -89,17 +117,28 @@ export default class BacktestInstance {
     * @private
     */
     validateOrders(orders) {
+
         // Orders is not an array
-        if (!Array.isArray(orders)) throw new Error(`BacktestInstance: your runner functions
-            returned invalid orders, those must be an array.`);
-        // Every order needs an instrument and a size
+        if (!Array.isArray(orders)) {
+            throw new Error(
+                `BacktestInstance: Your runner functions returned invalid orders, they must be an array, are ${JSON.stringify(orders)}.`);
+        }
+
+        // Every order needs an instrument and a valid size
         orders.forEach((order) => {
-            if (!order.hasOwnProperty('instrument') || !order.hasOwnProperty('size') || 
-                isNaN(order.size)) {
-                throw new Error(`BacktestInstance: Every order must have an instrument and a
-                    size field which is a number; your order is ${ JSON.stringify(order) }`);
+            if (!order.hasOwnProperty('instrument')) {
+                throw new Error(`BacktestInstance: Every order must have an instrument property; your order is ${JSON.stringify(order)} instead.`);
+            }
+
+            if (!order.hasOwnProperty('size')) {
+                throw new Error(`BacktestInstance: Every order must have an size property; your order is ${JSON.stringify(order)} instead.`);
+            }
+
+            if(isNaN(order.size)) {
+                throw new Error(`BacktestInstance: Every order's size property must be a number; your size is ${JSON.stringify(order.size)} instead.`);
             }
         });
+
     }
 
 

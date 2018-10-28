@@ -43,7 +43,7 @@ export default class DataSeriesExporter {
 
         //this.checkCols(dataSeries);
         const formattedData = this.reformatData(dataSeries);
-        await this.storeData(formattedData, path);
+        await this.storeData(formattedData, `${path}.csv`);
 
     }
 
@@ -104,6 +104,7 @@ export default class DataSeriesExporter {
      * Stores data in a CSV file
      * @param  {Array[]} dataAsArray        Data to store in a two-dimensional array (one row
      *                                      per array entry)
+     * @returns {Promise}
      * @private
      */
     storeData(dataAsArray, path) {

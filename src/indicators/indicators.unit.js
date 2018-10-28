@@ -8,7 +8,8 @@ test('exports are correct', (t) => {
     Object.keys(tulind.indicators).forEach((name) => {
         // Exception for «var»
         if (name === 'var') name = 'variance';
-        t.is(typeof indicators[upperCase(name)], 'function');
+        if (name === 'stochrsi') name = 'StochRSI';
+        t.is(typeof indicators[upperCase(name)], 'function', `Indicator ${name} not found`);
     });
 });
 

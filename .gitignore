@@ -1,4 +1,6 @@
+# Integration test output
 src/tests/test-data/output
+src/backtest-exporter/test-data/output
 
 .nyc_output
 

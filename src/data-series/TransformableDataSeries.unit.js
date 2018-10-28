@@ -264,8 +264,7 @@ test('fails if not all keys were provided (single return value)', async (t) => {
 	}
 	const ds = new TransformableDataSeries();
 	ds.addTransformer(['open'], new WithKey());
-	const err = await t.throws(ds.add({ open: 4 }));
-	t.is(err.message.includes('Single key missing'), true);
+	await t.throwsAsync(() => ds.add({ open: 4 }), /Single key missing/);
 });
 
 
@@ -277,8 +276,7 @@ test('fails if not all keys were provided (multi return value)', async (t) => {
 	}
 	const ds = new TransformableDataSeries();
 	ds.addTransformer(['open'], new TooManyKeys(), { b: Symbol() });
-	const err = await t.throws(() => ds.add({ open: 4 }));
-	t.is(err.message.includes('You need to specify a key'), true);
+	await t.throwsAsync(() => ds.add({ open: 4 }), /You need to specify a key/);
 });
 
 

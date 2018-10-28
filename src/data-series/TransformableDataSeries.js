@@ -310,8 +310,8 @@ export default class TransformableDataSeries extends DataSeries {
 	addTransformer(properties, transformer, keys) {
 
 		if (!Array.isArray(properties)) {
-			throw new Error(`TransformableDataSeries: Argument 'properties' must be an array, is
-				${ typeof properties }.`);
+			throw new Error(`TransformableDataSeries: Argument 'properties' for addTransformer 
+				must be an array, is ${ typeof properties }.`);
 		}
 
 		if (!transformer || typeof transformer !== 'object') {

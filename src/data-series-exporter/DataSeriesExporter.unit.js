@@ -24,7 +24,7 @@ function setupData() {
     dataSeries.add(new Map([['col2', 1], ['col1', 2]]));
     // Test if 0 is printed correctly (and not as '')
     dataSeries.add(new Map([['col1', 0], [symbol, 2]]));
-    const target = path.join(__dirname, 'test-data/test.csv'); 
+    const target = path.join(__dirname, 'test-data/test'); 
     return { exporter, dataSeries, symbol, target };
 }
 
@@ -36,10 +36,8 @@ function setupData() {
 
 test('export throws on invalid data', async (t) => {
     const dse = new DataSeriesExporter();
-    const err = await t.throws(() => dse.export('nonarray'));
-    t.is(err.message.includes('must e a valid'), true);
-    const err1 = await t.throws(() => dse.export(new DataSeries(), ['notstring']));
-    t.is(err1.message.includes('Pass a valid path'), true);
+    await t.throwsAsync(() => dse.export('nonarray'), /must e a valid/);
+    await t.throwsAsync(() => dse.export(new DataSeries(), ['notstring']), /Pass a valid path/);
 });
 
 /*test('sorts and outputs cols correctly', async (t) => {
@@ -70,15 +68,16 @@ test('exports data correctly', async (t) => {
     // Symbol() becomes 'Unspecified Symbol()'
     dataSeries.set(new Map([[Symbol(), 'symbolContent']]));
     await exporter.export(dataSeries, target);
-    const written = await fs.readFileSync(target, 'utf8');
+    const targetWithEnding = `${target}.csv`;
+    const written = await fs.readFileSync(targetWithEnding, 'utf8');
     t.is(written, 'test,col1,col2,Unspecified Symbol()\n2,3,,\n,2,1,\n2,0,,symbolContent');
-    fs.unlinkSync(target);
+    fs.unlinkSync(targetWithEnding);
 });
 
 test('exports fails with invalid data', async (t) => {
     const dse = new DataSeriesExporter();
     // Target missing
-    await t.throws(() => dse.storeData([['a','b'], [1, 2, 3, 4]]));
+    await t.throwsAsync(() => dse.storeData([['a','b'], [1, 2, 3, 4]]));
 });
 
 

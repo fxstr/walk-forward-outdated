@@ -113,8 +113,8 @@ export default class DataSeries {
 		}
 
 		if (!(data instanceof Map)) {
-			throw new Error(`DataSeries: Argument for set method must be a Map, is %o`,
-				data);
+			throw new Error(`DataSeries: Argument for set method must be a Map, is
+				${JSON.stringify(data)}`);
 		}
 
 		if (!this.internalData.length) {
@@ -185,7 +185,7 @@ export default class DataSeries {
 	 *                                         	and returns new column key
 	 * @return {DataSeries}             		Copied and transformed DataSeries
 	 */
-	static from(source, transformer, columnKeyTransformer) {
+	/*static from(source, transformer, columnKeyTransformer) {
 
 		if (transformer !== undefined && typeof transformer !== 'function') {
 			throw new Error(`DataSeries: Second argument of transformer must be a function or
@@ -200,7 +200,7 @@ export default class DataSeries {
 				other sources are not yet supported.`);
 		}
 
-	}
+	}*/
 
 }
 

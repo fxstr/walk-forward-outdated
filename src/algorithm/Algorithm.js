@@ -1,15 +1,17 @@
 import Instrument from '../instrument/Instrument';
+import debug from 'debug';
+
+const log = debug('WalkForward:Algorithm');
 
 export default class Algorithm {
 
     /**
      * Called from BacktestInstance and propagated through runAlgorithms
      * @param {[type]} backtest [description]
-     * @private
      */
     setBacktest(backtest) {
         this.backtest = backtest;
-        this.setupInstrumentListeners();
+        // this.setupInstrumentListeners();
     }
 
     /**
@@ -45,12 +47,22 @@ export default class Algorithm {
         return this.backtest.accounts;
     }
 
+    onClose(orders) {
+        log('onClose method not implemented for %s', this.constructor.name);
+        // Just return the original order
+        return orders;
+    }
+
+    onNewInstrument() {
+        log('onNewInstrument method not implemented for %s', this.constructor.name);
+    }
+
     /**
-     * Listens to newInstrument and close events on backtest's instruments and calls corresponding
-     * handlers if available.
+     * Listens to newInstrument on backtest's instruments and calls corresponding
+     * handlers if available. TODO: Move newInstruments 
      * @private
      */
-    setupInstrumentListeners() {
+    /* setupInstrumentListeners() {
         this.backtest.instruments.on('newInstrument', (instrument) => {
             if (typeof this.onNewInstrument === 'function') {
                 this.onNewInstrument(instrument);
@@ -59,9 +71,12 @@ export default class Algorithm {
         this.backtest.instruments.on('close', async (data) => {
             if (typeof this.onClose === 'function') {
                 const orders = await this.onClose(this.backtest.orders, data.instrument);
+                log('Orders are %o, pass them to backtest', orders);
+                // TODO: THIS IS FUCKING WRONG! Only main algorithm (base function) should
+                // return/set orders!
                 this.backtest.setOrders(orders);
             }
         });
-    }
+    } */ 
 
 }

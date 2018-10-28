@@ -36,5 +36,5 @@ test('exports date as ISO string', async (t) => {
 
 test('fails', async (t) => {
     const target = path.join(getDir(), 'does-not-exist', 'fail.csv');
-    await t.throws(exportToCsv(target, [['a', 'b'], [1, 2]]));
+    await t.throwsAsync(() => exportToCsv(target, [['a', 'b'], [1, 2]]));
 });

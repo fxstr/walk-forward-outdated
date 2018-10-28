@@ -27,10 +27,8 @@ test('throws on invalid arguments for on', (t) => {
 
 test('throws on invalid arguments for emit', async (t) => {
 	const ee = new AwaitingEventEmitter();
-	const err1 = await t.throws(ee.emit());
-	t.is(err1.message.indexOf('type') > -1, true);
-	const err2 = await t.throws(ee.emit(true));
-	t.is(err2.message.indexOf('type') > -1, true);
+	await t.throwsAsync(() => ee.emit(), /type/);
+	await t.throwsAsync(() => ee.emit(true), /type/);
 });
 
 test('calls with correct data and awaits them', async (t) => {

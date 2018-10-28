@@ -77,7 +77,7 @@ test('strategies are called with paramSets if optimizations are set', async (t) 
 	bt.setStrategies((...params) => {
 		args.push(params);
 		return {
-			onClose: () => []
+			onClose: () => [],
 		};
 	});
 	t.is(args.length, 0);
@@ -219,19 +219,18 @@ test('config: cash defaults to 100k', (t) => {
 test('cannot be run without strategies or instruments', async (t) => {
 	const bt = new Backtest();
 	// Run without strategy
-	const err1 = await t.throws(bt.run());
-	t.is(err1.message.includes('Use the setStrategies'), true);
+	t.throwsAsync(() => bt.run(), /Use the setStrategies/);
 	bt.setStrategies(() => { 
 		return {
 			onClose: () => { return []; }
 		};
 	});
 	// Run without instruments: Throws
-	const err2 = await t.throws(bt.run());
+	await t.throwsAsync(() => bt.run(), /Use setDataSource/);
+
 	const { dataSource } = setupData();
 	bt.setDataSource(dataSource);
-	t.is(err2.message.includes('Use setDataSource'), true);
-	await t.notThrows(() => bt.run());
+	await t.notThrowsAsync(() => bt.run());
 });
 
 
@@ -254,8 +253,7 @@ test('runs a backtest with parameter sets', async (t) => {
 
 test('cannot save before running', async (t) => {
 	const bt = new Backtest();
-	const err = await t.throws(() => bt.save());
-	t.is(err.message.includes('cannot save backtest'), true);
+	await t.throwsAsync(() => bt.save(), /cannot save backtest/);
 });
 
 

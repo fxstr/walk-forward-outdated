@@ -21,15 +21,13 @@ test('throws errors on read', async (t) => {
 		function() { return false; },
 		[path.join(__dirname, 'backtest*/*.csv')],
 	);
-	const err1 = await t.throws(csv1.read());
-	t.is(err1.message.indexOf('Instrument not provided') > -1, true);
+	await t.throwsAsync(() => csv1.read(), /Instrument not provided/);
 	// Date missing in CSV
 	const csv2 = new BacktestCSVSource(
 		instrumentNameFunction,
 		[path.join(__dirname, 'backtest*/no-date.csv')],
 	);
-	const err2 = await t.throws(csv2.read());
-	t.is(err2.message.indexOf('date field') > -1, true);
+	await t.throwsAsync(() => csv2.read(), /date field/);
 });
 
 

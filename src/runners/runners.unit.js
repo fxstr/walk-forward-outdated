@@ -44,7 +44,7 @@ test('runThrough and rejectOnFalse be chained', async (t) => {
 });
 
 test('invokes setBacktest if present', (t) => {
-	let backtests = [];
+	const backtests = [];
 	class WithNewInstrument {
 		onClose() {}
 		setBacktest(backtest) {
@@ -55,6 +55,21 @@ test('invokes setBacktest if present', (t) => {
 	const haltRunner = rejectOnFalse(new WithNewInstrument());
 	runner.setBacktest('test');
 	haltRunner.setBacktest('test2');
-	t.is(backtests.length, 2);
+	t.deepEqual(backtests, ['test', 'test2']);
+});
+
+test('invokes onNewInstrument if present', (t) => {
+	const instruments = [];
+	class OrderGenerator {
+		onClose() {}
+		onNewInstrument(instrument) {
+			instruments.push(instrument);
+		}
+	}
+	const runner = runThrough(new OrderGenerator());
+	const haltRunner = rejectOnFalse(new OrderGenerator());
+	runner.onNewInstrument('test');
+	haltRunner.onNewInstrument('test2');
+	t.deepEqual(instruments, ['test', 'test2']);
 });
 

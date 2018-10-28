@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node node_modules/nyc/bin/nyc node node_modules/ava/cli.js --watch --verbose --serial",
+    "test": "node node_modules/nyc/bin/nyc node node_modules/ava/cli.js --watch --color --verbose --serial",
     "coverage": "node node_modules/nyc/bin/nyc node node_modules/ava/cli.js"
   },
   "repository": {
@@ -14,16 +14,16 @@
   "author": "Felix Steiner <f@fxstr.com> (http://fxstr.com)",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^7.0.0-beta.46",
-    "@babel/plugin-proposal-class-properties": "^7.0.0-beta.46",
-    "@babel/plugin-transform-modules-commonjs": "^7.0.0-beta.46",
-    "@babel/preset-stage-2": "^7.0.0-beta.46",
-    "@babel/preset-stage-3": "^7.0.0-beta.46",
-    "@babel/register": "^7.0.0-beta.46",
-    "ava": "^1.0.0-beta.4",
+    "@babel/core": "^7.1.2",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
+    "@babel/plugin-syntax-async-generators": "^7.0.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.1.0",
+    "@babel/register": "^7.0.0",
+    "ava": "^1.0.0-rc.1",
     "del": "^3.0.0",
-    "npm": "^5.6.0",
-    "nyc": "^11.7.1"
+    "dir-compare": "^1.4.0",
+    "nyc": "^13.1.0"
   },
   "ava": {
     "files": [
@@ -37,21 +37,13 @@
     "failFast": true
   },
   "babel": {
-    "presets": [
-      [
-        "@babel/preset-stage-2",
-        {
-          "decoratorsLegacy": true,
-          "useBuiltIns": true
-        }
-      ],
-      "@babel/preset-stage-3"
-    ],
     "plugins": [
       "@babel/plugin-proposal-class-properties",
-      "@babel/plugin-transform-modules-commonjs"
+      "@babel/plugin-proposal-object-rest-spread",
+      "@babel/plugin-transform-modules-commonjs",
+      "@babel/plugin-syntax-async-generators"
     ],
-    "sourceMaps": "both"
+    "sourceMaps": "inline"
   },
   "dependencies": {
     "colors": "^1.2.1",

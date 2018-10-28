@@ -4,30 +4,26 @@ import setupTestData from './setupTestData';
 
 test('throws if params are not valid', async (t) => {
 	// Params: Missing
-	const err1 = await t.throws(runAlgorithms());
-	t.is(err1.message.indexOf('array of parameters') > -1, true);
+	t.throwsAsync(() => runAlgorithms(), /array of parameters/);
 	// Params: Not an array
-	const err2 = await t.throws(runAlgorithms('notanarray'));
-	t.is(err2.message.indexOf('array of parameters') > -1, true);
+	await t.throwsAsync(() => runAlgorithms('notanarray'), /array of parameters/);
 	// Algos: Missing
-	const err3 = await t.throws(runAlgorithms([]));
-	t.is(err3.message.indexOf('array of algorithms') > -1, true);
+	await t.throwsAsync(() => runAlgorithms([]), /array of algorithms/);
 	// Algos: Not an array
-	const err4 = await t.throws(runAlgorithms([], 'notanarray'));
-	t.is(err4.message.indexOf('array of algorithms') > -1, true);
+	await t.throwsAsync(() => runAlgorithms([], 'notanarray'), /array of algorithms/);
 	// Method name: Missing
-	const err5 = await t.throws(runAlgorithms([], []));
-	t.is(err5.message.indexOf('method name') > -1, true);
+	await t.throwsAsync(() => runAlgorithms([], []), /method name/);
 	// Method name: Not a string
-	const err6 = await t.throws(runAlgorithms([], []));
-	t.is(err6.message.indexOf('method name') > -1, true);
+	await t.throwsAsync(() => runAlgorithms([], []), /method name/);
 });
 
 test('throws if algorithms are not valid', async (t) => {
-	const err1 = await t.throws(runAlgorithms([], [false], 'onClose'));
-	t.is(err1.message.indexOf('onClose() method') > -1, true);
-	const err2 = await t.throws(runAlgorithms([], [{ onClose: false }], 'onClose'));
-	t.is(err2.message.indexOf('onClose() method') > -1, true);
+	await t.throwsAsync(() => runAlgorithms([], [false], 'onClose'), /onClose\(\) method/);
+	// Property present but not a function
+	await t.throwsAsync(
+		() => runAlgorithms([], [{ onClose: false }], 'onClose'),
+		/onClose\(\) method/
+	);
 });
 
 test('executes callbacks', async (t) => {

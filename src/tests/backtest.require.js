@@ -8,7 +8,8 @@ import test from 'ava';
 import Backtest, { rejectOnFalse, runThrough, BacktestCSVSource, Algorithm } from '../index.js';
 import { ProfitFactor, Cagr } from '../performanceIndicators';
 import { Sma as SMA, Stoch } from '../indicators.js';
-
+import debug from 'debug';
+const log = debug('WalkForward:BacktestTest');
 
 function clearDirectory() {
 	const output = path.join(__dirname, 'test-data', 'output');
@@ -20,19 +21,21 @@ function clearDirectory() {
 
 class SMAAlgo extends Algorithm {
 
-	fastSMAKey = 'fastSma'; // Better: Use Symbols()
+	fastSMAKey = 'fastSma'; // Better: Use Symbol(); issue: name doesn't look nice when they're
+							// exported/saved
 	slowSMAKey = 'slowSma';
 
 	constructor(field, fastSMA, slowSMA) {
 		super();
-		console.log('SMAAlgo: Init with %s %d %d, is %o', field, fastSMA, slowSMA, this);
+		log('SMAAlgo: Init with %s %d %d, is %o', field, fastSMA, slowSMA, this);
 		this.field = field;
+		// Params are floats – convert them to ints
 		this.fastSMALength = Math.round(fastSMA, 10);
 		this.slowSMALength = Math.round(slowSMA, 10);
 	}
 
 	onNewInstrument(instrument) {
-		console.log('SMAAlgo: Instrument %o added; fast is %d, slow %d', instrument.name, 
+		log('SMAAlgo: Instrument %o added; fast is %d, slow %d', instrument.name, 
 			this.fastSMALength, this.slowSMALength);
 		instrument.addTransformer([this.field], new SMA(this.fastSMALength),
 			this.fastSMAKey);
@@ -41,15 +44,18 @@ class SMAAlgo extends Algorithm {
 	}
 
 	onClose(orders, instrument) {
+		log('onClose, orders are %o, instrument is %o', orders, instrument);
 		const fast = instrument.head().get(this.fastSMAKey);
 		const slow = instrument.head().get(this.slowSMAKey);
-		console.log('%f > %f?', fast, slow);
-		if (fast && slow && fast > slow) {
-			console.log('SMA: Create order for %o', instrument.name);
-			return [...orders, { size: 1, instrument: instrument }];
-		}
-		else if (fast && slow && fast < slow) {
-			return [...orders, { size: -1, instrument: instrument }];
+		log('%o %o: %o > %o?', instrument.head().get('date'), instrument.name, fast, slow);
+		if (slow !== undefined && fast !== undefined) {
+			if (fast > slow) {
+				log('SMA: Create order for %o', instrument.name);
+				return [...orders, { size: 1, instrument: instrument }];
+			}
+			else if (fast < slow) {
+				return [...orders, { size: -1, instrument: instrument }];
+			}
 		}
 		return [];
 	}
@@ -62,8 +68,8 @@ class SMAAlgo extends Algorithm {
 // c) test runThrough
 class StochIndicators extends Algorithm {
 
-	stochKKey = Symbol();
-	stochDKey = Symbol();
+	stochKKey = 'stoch_K'; // Should use Symbol()
+	stochDKey = 'stoch_D';
 
 	/**
 	 * Params: k, k slowing factor and d slowing factor
@@ -86,53 +92,87 @@ class StochIndicators extends Algorithm {
 
 
 
-
+/**
+ * Allocates every instrument the same amount of money; if a strategy has 5 instruments and a
+ * cash pile of 100k, every instrument gets 20k. 
+ */
 class EqualPositionSize extends Algorithm {
 	
-	async onClose(orders) {
+	async onClose(orders, instrument) {
 
 		// Make it async – just to test
-		await new Promise((resolve) => setTimeout(resolve), 2);
+		await new Promise((resolve) => setTimeout(resolve), 20);
 
-		const positions = this.getCurrentPositions();
-		const newOrders = [];
+		log(
+			'EqualPositionSize: Original orders on %o are %o',
+			instrument.head().get('date'),
+			orders.map(order => order.instrument.name).join(', ')
+		);
 
-		const closeOrders = orders.filter((order) => order.size === -1);
-		closeOrders.forEach((order) => {
-			console.log('Try to close; order size is -1 for %s, position size %o', 
-				order.instrument.name, positions.get(order.instrument));
-			const existing = positions.get(order.instrument);
-			if (existing) {
-				newOrders.push({
+		const instrumentsWithPositions = [...this.getCurrentPositions().keys()];
+		log(
+			'EqualPositionSize: Current instruments with positions are %o',
+			instrumentsWithPositions.map(instrument => instrument.name).join(', ')
+		);
+
+		// Don't allow double-orders for long positions: Remove all instruments from orders that
+		// have positions
+		const ordersWithoutPositions = orders.filter(order => (
+			order.size < 0 || !instrumentsWithPositions.includes(order.instrument)
+		));
+
+		log(
+			'EqualPositionSize: Orders without positions are %o',
+			ordersWithoutPositions.map(order => order.instrument.name).join(', ')
+		);
+
+		// Remove orders trying to close positions that don't exist
+		const ordersWithoutInvalidCloses = ordersWithoutPositions.filter(order => {
+			log(this.getCurrentPositions().get(order.instrument));
+			const position = this.getCurrentPositions().get(order.instrument);
+			return order.size > 0 || (position && position.size);
+		});
+
+		log(
+			'EqualPositionSize: Valid orders are %o',
+			ordersWithoutInvalidCloses.map(order => order.instrument.name).join(', ')
+		);
+
+		// Distribute cash evenly among instruments without positions
+		const instrumentsWithoutPositionCount = this.getInstruments().length - 
+			this.getCurrentPositions().size;
+
+		const currentCash = this.getAccounts().head().get('cash');
+		const moneyPerInstrument = currentCash / this.getInstruments().length;
+
+		const newOrders = ordersWithoutInvalidCloses.map(order => {
+			
+			// Order size -1: Close the whole current position *if* there is a current position
+			if (order.size === -1) {
+				return{
 					instrument: order.instrument,
-					size: existing.size * -1,
-				});
-				console.log('Close for %s/%d', order.instrument.name, existing.size * -1);
+					size: this.getCurrentPositions().get(order.instrument).size * -1,
+				};
+			} else {
+				return {
+					// 0.9: Security margin if prices go up before the next open
+					size: Math.floor(moneyPerInstrument / order.instrument.head().get('close') * 
+						0.9),
+					instrument: order.instrument,					
+				};
 			}
 		});
 
-		const openOrders = orders.filter((order) => order.size === 1);
-		const cash = this.getAccounts().head().get('cash');
-		// Sum up the open value of all instruments that have orders
-		const openOrderValue = openOrders.reduce((prev, order) => {
-			return prev + order.instrument.head().get('close') || 0;
-		}, 0);
-		openOrders.forEach((order) => {
-			const close = order.instrument.head().get('close');
-			console.log('EqualPositionSize: Cash is %d, orders %d, close %d', cash, 
-				orders.length, close);
-			// Add 0.8 to make sure the order is executed even if prices go up on close
-			const newSize = Math.floor(cash * (close / openOrderValue) / close * 0.8);
-			console.log('EqualPositionSize: New pos size is %d; close %d and all closes %d', 
-				newSize, close, openOrderValue);
-			const updatedOrder = {
-				size: newSize, 
-				instrument: order.instrument,
-			};
-			console.log('EqualPositionSize: New order is %d/%s', updatedOrder.size, 
-				updatedOrder.instrument.name);
-			newOrders.push(updatedOrder);
-		});
+		log(
+			'EqualPositionSize: %d instruments, %d positions, without positions %d; cash %d, moneyPerInstrument %d, orders were %o and are %o',
+			this.getInstruments().length,
+			this.getCurrentPositions().size, 
+			instrumentsWithoutPositionCount,
+			currentCash,
+			moneyPerInstrument,
+			orders.map(order => `${order.instrument.name}/${order.size}`).join(', '),
+			newOrders.map(order => `${order.instrument.name}/${order.size}`).join(', '),
+		);
 
 		return newOrders;
 
@@ -148,9 +188,9 @@ async function runTest() {
 	const backtest = new Backtest();
 	
 	const dataSource = new BacktestCSVSource(
-		(name) => {
-			const instrumentName = name.substring(name.lastIndexOf('/') + 1, name.length - 4);
-			console.log('runTest, Instrument name is %o from %o', instrumentName, name);
+		(csvName) => {
+			const instrumentName = csvName.substring(csvName.lastIndexOf('/') + 1, csvName.length - 4);
+			log('runTest, Instrument name is %o from csv %o', instrumentName, csvName);
 			return instrumentName;
 		},
 		[path.join(__dirname, 'test-data/input/*.csv')],
@@ -162,8 +202,7 @@ async function runTest() {
 	//backtest.addOptimization('slowSMA', [1, 3], 3);
 	//backtest.addOptimization('fastSMA', [2, 4], 3);
 
-	const config = new Map();
-	config.cash = () => 10000;
+	const config = new Map([['cash', () => 10000]]);
 	backtest.setConfiguration(config);
 
 	backtest.setStrategies((params) => {

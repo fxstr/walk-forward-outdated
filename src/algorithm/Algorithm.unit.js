@@ -24,8 +24,13 @@ function setupData() {
     return { backtest };
 }
 
+test('returns first param on onClose', (t) => {
+    const algo = new Algorithm();
+    const result = algo.onClose('test');
+    t.is(result, 'test');
+});
 
-test('calls onClose on close', async (t) => {
+/* test('calls onClose on close', async (t) => {
     const { backtest } = setupData();
     let called = 0;
     class MyAlgo extends Algorithm {
@@ -85,7 +90,7 @@ test('calls onNewInstrument with correct data', (t) => {
     const instrument = { instrument: 'myInstrument' };
     backtest.instruments.emit('newInstrument', instrument);
     t.deepEqual(instruments, [instrument]);
-});
+}); */
 
 
 test('removes date and type for getCurrentPositions', (t) => {

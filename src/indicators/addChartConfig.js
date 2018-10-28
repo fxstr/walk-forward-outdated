@@ -1,4 +1,4 @@
-import chartConfig from './chartConfig';
+import getChartConfig from './getChartConfig';
 
 /**
  * Adds config options to display a chart to an indicator. Extends existing classes created through
@@ -8,7 +8,7 @@ import chartConfig from './chartConfig';
 export default function addChartConfig(indicator) {
     return class extends indicator {
         getChartConfig() {
-            return chartConfig[indicator.identifier];
+            return getChartConfig(indicator.identifier);
         }
     };
 }

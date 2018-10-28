@@ -43,6 +43,5 @@ test('returns false if all data was read', async (t) => {
 
 test('returns error if file is invalid', async (t) => {
 	const csv = new CSVSource([path.join(__dirname, 'test*/invalid-test.csv')]);
-	const err = await t.throws(csv.read());
-	t.is(err instanceof Error, true);
+	await t.throwsAsync(() => csv.read());
 });

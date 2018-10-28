@@ -9,7 +9,7 @@ test('throws on invalid arguments', async (t) => {
     t.notThrows(() => new SMA('one'));
     const validSma = new SMA(1);
     t.throws(() => validSma.next(1, 2), /expected:\s*real/); // Throws synchronously
-    await t.notThrows(validSma.next(1));
+    await t.notThrows(() => validSma.next(1));
 });
 
 test('returns expected results (for simple sma)', async (t) => {

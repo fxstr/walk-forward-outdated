@@ -155,15 +155,15 @@ test('tail works with empty DataSeries', (t) => {
 
 
 //////////////////// FROM
-
-test('static from works as expected', (t) => {
+// Not needed – is easily done manually
+/*test('static from works as expected', (t) => {
 	const ds = new DataSeries();
 	ds.add(new Map([['a', 1], ['b', 2]]));
 	t.throws(() => DataSeries.from([]), /existing DataSeries/);
 	t.throws(() => DataSeries.from(ds, null), /must be a function/);
 	const clone = DataSeries.from(ds);
 	t.is(clone instanceof DataSeries, true);
-});
+});*/
 
 
 

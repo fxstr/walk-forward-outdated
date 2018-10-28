@@ -53,8 +53,7 @@ test('throws on invalid data (date missing)', async (t) => {
 		yield new Map([['noDateField', true]]);
 	}
 	const bi = new BacktestInstruments(generatorFunction);
-	const err = await t.throws(bi.run());
-	t.is(err.message.indexOf('contain a date') > -1, true);
+	await t.throwsAsync(() => bi.run(), /contain a date/);
 });
 
 test('throws on invalid data (date invalid)', async (t) => {
@@ -62,8 +61,7 @@ test('throws on invalid data (date invalid)', async (t) => {
 		yield new Map([['date', new Date('invalid')]]);
 	}
 	const bi = new BacktestInstruments(generatorFunction);
-	const err = await t.throws(bi.run());
-	t.is(err.message.indexOf('contain a date') > -1, true);
+	await t.throwsAsync(() => bi.run(), /contain a date/);
 });
 
 test('throws on invalid close property', async (t) => {
@@ -71,8 +69,7 @@ test('throws on invalid close property', async (t) => {
 		yield new Map([['date', new Date(2010, 0, 1)], ['close', 'invalid']]);
 	}
 	const bi = new BacktestInstruments(generatorFunction);
-	const err = await t.throws(bi.run());
-	t.is(err.message.indexOf('not a number') > -1, true);
+	await t.throwsAsync(() => bi.run(), /not a number/);
 });
 
 // Not needed as we invalid opens are okay

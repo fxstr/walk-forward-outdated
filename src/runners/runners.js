@@ -10,6 +10,9 @@ function createReturnObject(algos, halt) {
 		async onClose(...params) {
 			return await runAlgorithms(params, algos, 'onClose', !!halt);	
 		},
+		async onNewInstrument(instrument) {
+			callFunction(algos, 'onNewInstrument', [instrument]);
+		},
 		setBacktest(backtest) {
 			callFunction(algos, 'setBacktest', [backtest]);
 		}

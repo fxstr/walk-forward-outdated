@@ -1,8 +1,9 @@
-import debug from 'debug';
+import logger from '../logger/logger';
 import ColumnConfig from './ColumnConfig';
 import convertObjectToMap from './convertObjectToMap';
-import cloneDataSeries from './cloneDataSeries';
-const log = debug('WalkForward:DataSeries');
+
+const log = logger('WalkForward:DataSeries');
+const { debug } = log;
 
 /**
 * Stores multiple values for a given key. Key is e.g. a date, values 'open', 'close' etc.
@@ -37,7 +38,7 @@ export default class DataSeries {
 	*/
 	add(data) {
 
-		log('Add data %o', data);
+		log.debug('Add data %o', data);
 
 		// If an object (which is not a map) is passed, try to convert it to a Map
 		if (typeof data === 'object' && !(data instanceof Map)) {
@@ -132,7 +133,7 @@ export default class DataSeries {
 					set method; tried to overwrite %o with %o, is already %o`, key, value,
 					headRow.get(key));
 			}
-			log('Set col %o to %o', key, value);
+			debug('Set col %o to %o', key, value);
 			headRow.set(key, value);
 		}
 

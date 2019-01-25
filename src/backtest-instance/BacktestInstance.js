@@ -1,10 +1,13 @@
-import debug from 'debug';
+import logger from '../logger/logger';
 import mergeOrders from './mergeOrders';
 import executeOrders from './executeOrders';
 import DataSeries from '../data-series/DataSeries';
 import Instrument from '../instrument/Instrument';
 import calculatePositionsValues from './calculatePositionsValues';
-const log = debug('WalkForward:BacktestInstance');
+import formatDate from '../helpers/formatDate';
+
+const log = logger('WalkForward:BacktestInstance');
+const { debug } = log;
 
 /**
 * Instance of a backtest that runs a backtest with certain parameters. 
@@ -49,7 +52,11 @@ export default class BacktestInstance {
     */
     constructor(instruments, runner, backtestConfig) {
         // No validation needed as this is a purely internal class
-        log('Initialize');
+        log.debug(
+            'Initialize BacktestInstance for instruments %o, config %o',
+            instruments,
+            backtestConfig,
+        );
         this.instruments = instruments;
         this.runner = runner;
         this.config = backtestConfig;        
@@ -61,29 +68,60 @@ export default class BacktestInstance {
     */
     async run() {
 
-        log('Run; instruments are %o', this.instruments);
-
         if (typeof this.runner.setBacktest === 'function') this.runner.setBacktest(this, true);
 
         if (typeof this.runner.onNewInstrument === 'function') {
-            this.instruments.on('newInstrument', this.runner.onNewInstrument.bind(this.runner));
+            this.instruments.on('newInstrument', (instrument) => {
+                log.info('New instrument:', instrument.name);
+                this.runner.onNewInstrument(instrument);
+            });
         }
 
         if (typeof this.runner.onClose === 'function') {
             this.instruments.on(
                 'close',
                 async (ev) => {
-                    log('close event caught, event data is %o', ev);
+                    debug(
+                        'Close event caught, event data is %o for instrument %s',
+                        ev.data,
+                        ev.instrument.name
+                    );
                     // First param: orders (empty at the beginning), second param: instrument that 
                     // fired onClose
-                    const orders = await this.runner.onClose([], ev.instrument);
-                    log(
-                        'BacktestInstance: Runner function called for data %o on instrument %o, orders are %o. Update orders.',
-                        ev.data,
-                        ev.instrument.name,
-                        orders,
+                    const orders = await this.runner.onClose(
+                        // Make sure we pass in existing orders – or they will be lost!
+                        this.orders,
+                        ev.instrument,
                     );
-                    this.setOrders(orders);
+
+                    if (!orders.length) {
+                        log.info(
+                            '%s: No orders for %s',
+                            formatDate(ev.data.get('date')),
+                            ev.instrument.name,
+                        );
+                    } else {
+
+                        // Simplify orderrs and positions (for logging purposes only)
+                        const positionsForLog = [...this.positions.head().entries()]
+                            .filter(entry => entry[0] !== 'date' && entry[0] !== 'type')
+                            .map(entry => `${entry[0].name}/${entry[1].size}`)
+                            .join(', ');
+                        const ordersForLog = orders.map(order => (
+                            `${order.instrument.name}/${order.size}`
+                        )).join(', ');
+
+                        log.info(
+                            '%s: Algos for instrument %s returned orders %o. Current positions are %o.',
+                            formatDate(ev.data.get('date')),
+                            ev.instrument.name,
+                            ordersForLog,
+                            positionsForLog,
+                        );
+                    }
+
+                    this.addOrders(orders);
+
                 }
             );
         }
@@ -92,7 +130,7 @@ export default class BacktestInstance {
         this.instruments.on('afterOpen', this.handleAfterOpen.bind(this));
 
         await this.instruments.run();
-        log('Account is %o', this.accounts.data);
+        debug('Account is %o', this.accounts.data);
 
     }
 
@@ -107,9 +145,15 @@ export default class BacktestInstance {
         this.validateOrders(orders);
         // Update orders *after* they were checked
         this.orders = orders;
-        log('Set orders to %o', orders);
+        log.info('Set orders to %o', this.orders);
     }
 
+
+    addOrders(orders) {
+        this.validateOrders(orders);
+        this.orders = [...this.orders, ...orders];
+        log.info('Added orders, are now %o', this.orders); 
+    }
 
     /**
     * Checks if the orders array contains valid entries
@@ -149,20 +193,26 @@ export default class BacktestInstance {
      */
     handleAfterClose(data) {
         const currentDate = data[0].head().get('date');
-        log('Close with %o', data);
+        log.info('%o: After open', currentDate);
 
         const prices =  this.getCurrentPrices(data, 'close');
 
         // Make sure we only calculate values of acutal positions (and not the date or type field
         // that are also part of this.positions)
-        const updatedPositions = calculatePositionsValues(this.getRealPositionsOfPositionHead(), 
-            prices);
-        log(`updatedPositions after close are %o`, updatedPositions);
+        const updatedPositions = calculatePositionsValues(
+            this.getRealPositionsOfPositionHead(), 
+            prices,
+        );
+        log.debug(
+            `%s: Updated positions after close are %o`,
+            formatDate(currentDate),
+            updatedPositions,
+        );
 
         // Update account
         const newValue = Array.from(updatedPositions.values())
             .reduce((prev, position) => prev + position.value, 0);
-        log('New invested value after close is %d', newValue);
+        debug('New invested value after close is %d', newValue);
         this.accounts.add(new Map([
             ['invested', newValue],
             ['date', currentDate],
@@ -174,7 +224,7 @@ export default class BacktestInstance {
         // Only update positions after we have calculated our new values
         updatedPositions.set('date', currentDate);
         updatedPositions.set('type', 'close');
-        log('Updated positions for close are %o', updatedPositions);
+        debug('Updated positions for close are %o', updatedPositions);
 
         // Always update positions, even if they're empty. Add a new row with field type set to
         // 'close'
@@ -208,8 +258,10 @@ export default class BacktestInstance {
     handleAfterOpen(data) {
 
         const currentDate = data[0].head().get('date');
-        log('Handle afterOpen for %s on %s', data.map((instrument) => instrument.name).join(', '),
+        debug('Handle afterOpen for %s on %s', data.map((instrument) => instrument.name).join(', '),
             currentDate);
+
+        log.info('%o: After open', currentDate);
 
         const prices = this.getCurrentPrices(data, 'open');
 
@@ -222,10 +274,31 @@ export default class BacktestInstance {
         const mergedOrders = mergeOrders(this.orders);
 
         const account = this.accounts.head() || this.createAccount();
-        const newPositions = executeOrders(recalculatedPositions, mergedOrders, prices, 
-            account.get('cash'));
+        const newPositions = executeOrders(
+            recalculatedPositions,
+            mergedOrders,
+            prices, 
+            account.get('cash'),
+        );
 
-        log(`New positions are %o, merged orders %o`, newPositions, mergedOrders);
+        const ordersForLog = mergedOrders.map(order => ({
+            instrument: order.instrument.name,
+            size: order.size,
+        }));
+        log.info('Merged oders are %o, orders are %o', ordersForLog, this.orders);
+        const positionsForLog = [];
+        for (const [columnKey, columnValue] of newPositions) {
+            positionsForLog.push({
+                instrument: columnKey.name,
+                position: columnValue.size
+            });
+        }
+        log.info(
+            '%s: New positions after open are %o',
+            formatDate(currentDate),
+            positionsForLog,
+        );
+
 
         // Get values to update account
         // previousValue is the value of all positions (on afterOpen) before any new positions were 
@@ -244,18 +317,17 @@ export default class BacktestInstance {
             ['type', 'open'],
             ['cash', newCash],
         ]);
-        log('Account now has cash %d and invested %d', newCash, newInvested);
+        debug('Account now has cash %d and invested %d', newCash, newInvested);
         this.accounts.add(newAccountValues);
 
         // Always add positions, even if they're empty. Update newPositions only after we have
         // calculated values for cash & co (or the new properties will also be looped through).
         newPositions.set('date', currentDate);
         newPositions.set('type', 'open');
-        log('New positions are %o', newPositions);
         this.positions.add(newPositions);
 
         // Delete all orders – they're good for 1 bar only
-        this.orders = [];
+        this.setOrders([]);
 
     }
 

@@ -1,5 +1,5 @@
-//import debug from 'debug';
-//const log = debug('WalkForward:genereateParameters');
+//import logger from '../logger/logger';
+//const { debug } = logger('WalkForward:genereateParameters');
 
 // Use golden ratio (1.618) as default – Math.E is too large
 const goldenRatio = (1 + Math.sqrt(5))/2;

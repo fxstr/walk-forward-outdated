@@ -1,7 +1,7 @@
 import DataSeries from './DataSeries';
-import debug from 'debug';
+import logger from '../logger/logger';
 import convertObjectToMap from './convertObjectToMap';
-const log = debug('WalkForward:TransformableDataSeries');
+const { debug } = logger('WalkForward:TransformableDataSeries');
 
 /**
 * Extends DataSeries with transformers.
@@ -136,7 +136,7 @@ export default class TransformableDataSeries extends DataSeries {
 		// For params of next(), see addTransformer; DO NOT PASS more data if not absolutely needed
 		// as we want to have stateless/simple transformers
 		const transformerResult = await transformer.transformer.next(...data);
-		log('Executed transformer; result is %o, data was %o', transformerResult, data);
+		debug('Executed transformer; result is %o, data was %o', transformerResult, data);
 		this.executedTransformers.push(transformer.transformer);
 
 		await this.addTransformedData(transformerResult, transformer);
@@ -161,7 +161,7 @@ export default class TransformableDataSeries extends DataSeries {
 			if (this.wasTransformerExecuted(transformer.transformer)) continue;
 			const propertiesForTransformer = this.allPropertiesAvailable(transformer.properties);
 			if (!propertiesForTransformer) {
-				log('Not all properties available for transformer, continue');
+				debug('Not all properties available for transformer, continue');
 				continue; // Check next transformer
 			}
 			else {
@@ -170,8 +170,11 @@ export default class TransformableDataSeries extends DataSeries {
 					// Data: values in head row for all properties passed (in the same order)
 					data: transformer.properties.map((property) => this.head().get(property))
 				};
-				log('Execute transformer %o with data %o', returnValue.transformer, 
-					returnValue.data);
+				debug(
+					'Execute transformer %o with data %o',
+					returnValue.transformer.constructor.name, 
+					returnValue.data,
+				);
 				return returnValue;
 			}
 		}
@@ -225,7 +228,7 @@ export default class TransformableDataSeries extends DataSeries {
 			if (!this.columns.has(resultKey)) newCols.push(resultKey);
 		}
 
-		log('Add transformed data %o to head row', rowData);
+		debug('Add transformed data %o to head row', rowData);
 		await this.set(rowData);
 
 		// Better solution: Use something like setColConfig in DataSeries so that we can config
@@ -329,7 +332,7 @@ export default class TransformableDataSeries extends DataSeries {
 			keys: keys,
 		});
 
-		log('Add transformer %o with properties %o and keys %o', transformer, properties, keys);
+		debug('Add transformer %o with properties %o and keys %o', transformer, properties, keys);
 
 	}
 

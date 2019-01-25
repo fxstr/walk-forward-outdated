@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import debug from 'debug';
+import logger from '../logger/logger';
 import util from 'util';
 
-const log = debug('HighChartsExporter');
+const { debug } = logger('HighChartsExporter');
 
 /**
  * Quick win: Just export a data structure that highcharts will understand to simplify things. 
@@ -49,7 +49,7 @@ export default class HighChartsExporter {
      */
     getTotalChartHeight() {
         const height = this.charts.reduce((prev, chart) => prev + chart.height, 0);
-        log('Total chart height is %o from %o', height, this.charts);
+        debug('Total chart height is %o from %o', height, this.charts);
         return height;
     }
 
@@ -66,7 +66,7 @@ export default class HighChartsExporter {
         // dataSeries does not contain a name, but e.g. instrument (extended class) does
         this.name = name || dataSeries.name;
 
-        log('Export %s to %s', this.name, basePath);
+        debug('Export %s to %s', this.name, basePath);
 
         this.createMainChart();
         this.exportOHLC();
@@ -75,7 +75,7 @@ export default class HighChartsExporter {
 
         this.updateHeights();
         await this.writeData();
-        log('Charts are %o', this.charts);
+        debug('Charts are %o', this.charts);
 
     }
 
@@ -170,7 +170,7 @@ export default class HighChartsExporter {
         // Handle charts first: We need its ID to reference it by series
         // Chart may appear in multiple series configs. Only add it to this.charts once.
         let chart;
-        console.log('chartConfig is %o', chartConfig);
+        console.debug('chartConfig is %o', chartConfig);
         if (this.mappedCharts.has(chartConfig)) {
             chart = this.mappedCharts.get(chartConfig);
         } else {
@@ -183,11 +183,11 @@ export default class HighChartsExporter {
                 id: `${this.chartIdCounter += 1}`,
             };
             this.charts.push(chart);
-            console.log('push highcharts chart %o', chart);
+            console.debug('push highcharts chart %o', chart);
             this.mappedCharts.set(chartConfig, chart);
         }
 
-        console.log('chart is %o', chart);
+        console.debug('chart is %o', chart);
 
         const highchartsSeries = {
             ...seriesConfig,
@@ -196,7 +196,7 @@ export default class HighChartsExporter {
             name: columnKey,
         };
 
-        console.log('push highcharts series %o', highchartsSeries);
+        console.debug('push highcharts series %o', highchartsSeries);
         this.series.push(highchartsSeries);
 
 
@@ -232,7 +232,7 @@ export default class HighChartsExporter {
         const percentageBasedSpace = relativeSpace / totalHeight;
         this.charts.reduce((topPosition, chart) => {
             const height = chart.height / totalHeight;
-            log('Height %o of total %o, was %o', chart.height, totalHeight, chart.height);
+            debug('Height %o of total %o, was %o', chart.height, totalHeight, chart.height);
             chart.height = Math.floor(height * 100) + '%';
             chart.top = Math.floor(topPosition * 100 + percentageBasedSpace) + '%';
             return topPosition + height + percentageBasedSpace;
@@ -251,7 +251,7 @@ export default class HighChartsExporter {
         };
         const filePath = path.join(this.basePath, this.name + '.json');
         const fileContent = JSON.stringify(highstockData, null, 2);
-        log('Store JSON to', filePath);
+        debug('Store JSON to', filePath);
         const writeFile = util.promisify(fs.writeFile);
         await writeFile(filePath, fileContent);
     }

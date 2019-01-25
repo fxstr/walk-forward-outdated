@@ -111,6 +111,15 @@ In order to run a backtest,
 
 ## Documentation
 
+### Logging
+
+To enable logs, set the log level and [components](https://github.com/visionmedia/debug) through your environment:
+
+```bash
+export DEBUG=WalkForward:*
+export "DEBUG_LEVELS=debug, info, warn, error"
+```
+
 Algos and stacks
 
 ### Algos
@@ -130,12 +139,12 @@ Instruments, results
 ## Roadmap
 - [x] Parameter optimization
 - [ ] Configure spread, commission and slippage depending on an order
-- [ ] Output relevant display data as JSON (for formatted output in frontend)
-- [ ] Interactive web frontend
+- [x] Output relevant display data as JSON (for formatted output in frontend)
+- [x] Interactive web frontend
 - [ ] Instrument configuration (type of instrument, whole sizes, margins)
 - [ ] Margin handling
 - [ ] More optimization techniques (in addition to current log, e.g. linear, other log bases, integers only instead of floats)
-- [ ] Relevant ouptut in form of tables (orders, positions in addition to charts)
+- [x] Relevant ouptut in form of tables (orders, positions in addition to charts)
 - [ ] Better charts for parameter optimization (2D/3D visualization)
 - [ ] Currency handling
 - [ ] Walk forward optimization

@@ -13,6 +13,10 @@ function createReturnObject(algos, halt) {
 		async onNewInstrument(instrument) {
 			callFunction(algos, 'onNewInstrument', [instrument]);
 		},
+		/**
+		 * Sets backtest on runner; needed to access backtest data (current positions, oders etc.)
+		 * from Algorithm. This is a private function that shall not be overwritten in 
+		 */
 		setBacktest(backtest) {
 			callFunction(algos, 'setBacktest', [backtest]);
 		}

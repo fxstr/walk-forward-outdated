@@ -1,7 +1,7 @@
 import Instrument from '../instrument/Instrument';
-import debug from 'debug';
+import logger from '../logger/logger';
 
-const log = debug('WalkForward:Algorithm');
+const { debug } = logger('WalkForward:Algorithm');
 
 export default class Algorithm {
 
@@ -25,8 +25,10 @@ export default class Algorithm {
     getCurrentPositions() {
         if (!this.backtest.positions.data.length) return new Map();
         const positions = new Map();
-        for (const [key, value] of this.backtest.positions.head()) {
-            if (key instanceof Instrument) positions.set(key, value);
+        for (const [instrument, position] of this.backtest.positions.head()) {
+            if (instrument instanceof Instrument && position.size !== 0) {
+                positions.set(instrument, position);
+            }
         }
         return positions;
     }
@@ -48,13 +50,13 @@ export default class Algorithm {
     }
 
     onClose(orders) {
-        log('onClose method not implemented for %s', this.constructor.name);
-        // Just return the original order
+        debug('onClose method not implemented for %s', this.constructor.name);
+        // Just return the original order if class was not derived
         return orders;
     }
 
     onNewInstrument() {
-        log('onNewInstrument method not implemented for %s', this.constructor.name);
+        debug('onNewInstrument method not implemented for %s', this.constructor.name);
     }
 
     /**
@@ -71,7 +73,7 @@ export default class Algorithm {
         this.backtest.instruments.on('close', async (data) => {
             if (typeof this.onClose === 'function') {
                 const orders = await this.onClose(this.backtest.orders, data.instrument);
-                log('Orders are %o, pass them to backtest', orders);
+                debug('Orders are %o, pass them to backtest', orders);
                 // TODO: THIS IS FUCKING WRONG! Only main algorithm (base function) should
                 // return/set orders!
                 this.backtest.setOrders(orders);

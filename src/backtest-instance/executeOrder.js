@@ -1,6 +1,6 @@
 import calculatePositionValue from './calculatePositionValue';
-import debug from 'debug';
-const log = debug('WalkForward:executeOrder');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:executeOrder');
 
 const defaultPosition = {
 	size: 0,
@@ -31,7 +31,7 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 		const newPositionSize = currentPosition.size + orderSize;
 		const value = calculatePositionValue(price, price, orderSize);
 		const newPositionValue = currentPosition.value + value;
-		log('Position gets bigger, from %d to %d; position value is %d, total value %d', 
+		debug('Position gets bigger, from %d to %d; position value is %d, total value %d', 
 			currentPosition.size, newPositionSize, currentPosition.size, value, newPositionValue);
 
 		return {
@@ -74,14 +74,14 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 				const newPositionSize = position.size + outstandingOrderSize;
 				const newPositionValue = calculatePositionValue(price, position.openPrice, 
 					newPositionSize);
-				log('Reduce size of position %o to %d; remaining value is %d', position, 
+				debug('Reduce size of position %o to %d; remaining value is %d', position, 
 					newPositionSize, newPositionValue);
 				newPositions.push({
 					size: newPositionSize,
 					value: newPositionValue,
 					openPrice: position.openPrice, // Keep the old openig price
 				});
-				console.log('reduce', position.size, outstandingOrderSize);
+				console.debug('reduce', position.size, outstandingOrderSize);
 
 				// If order size !== 0, add reduced position to closingPositions
 				if (outstandingOrderSize !== 0) {
@@ -97,16 +97,15 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 				const gain = position.value - newPositionValue;
 				gainRealized += gain;
 				outstandingOrderSize -= (newPositionSize - position.size);
-				log('Realized a gain of %d, outstanding orders are still %d; total gain is %d', 
+				debug('Realized a gain of %d, outstanding orders are still %d; total gain is %d', 
 					gain, outstandingOrderSize, gainRealized);
 			}
 			// Same size or position is smaller than order: dump it
 			else {
 				outstandingOrderSize += position.size;
 				gainRealized += position.value;
-				console.log('dump');
 				closedPositions.push({ ...position });
-				log('Dump position %o', position);
+				debug('Dump position %o', position);
 			}
 			
 		});
@@ -121,7 +120,8 @@ export default function executeOrder(orderSize, currentPosition = defaultPositio
 			});
 		}
 
-		log('New positions are %o', newPositions);
+		debug('New positions are %o', newPositions);
+
 		return {
 			// Re-caulcate position size and value – just to be sure
 			size: newPositions.reduce((prev, item) => prev + item.size, 0),

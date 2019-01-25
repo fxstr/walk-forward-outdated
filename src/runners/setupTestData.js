@@ -1,5 +1,5 @@
-import debug from 'debug';
-const log = debug('WalkForward:runAlgorithms.unit');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:runAlgorithms.unit');
 
 /**
 * Setup test data that is reused in parallel, serial, run and runAlgorithms
@@ -34,7 +34,7 @@ export default function setupTestData() {
 	class FalseAlgorithm extends Algorithm {
 		async onClose() {
 			const result = await new Promise((resolve) => setTimeout(() => resolve(false)), 20);
-			log('result for FalseAlgorithm is %o', result);
+			debug('result for FalseAlgorithm is %o', result);
 			return result;
 		}
 	}

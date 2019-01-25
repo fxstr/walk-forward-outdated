@@ -1,9 +1,9 @@
 import exportToCsv from '../export-to-csv/exportToCsv';
-import debug from 'debug';
+import logger from '../logger/logger';
 import colors from 'colors';
 import DataSeries from '../data-series/DataSeries';
 
-const log = debug('WalkForward:DataSeriesExporter');
+const { debug } = logger('WalkForward:DataSeriesExporter');
 
 /**
  * Exports one or multiple DataSeries for a given configuration. Use a class in order to persist 
@@ -109,7 +109,7 @@ export default class DataSeriesExporter {
      */
     storeData(dataAsArray, path) {
 
-        log('Write %d entries to %s', dataAsArray[0].length, path);
+        debug('Write %d entries to %s', dataAsArray[0].length, path);
         return exportToCsv(path, dataAsArray);
 
     }

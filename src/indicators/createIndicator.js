@@ -1,5 +1,5 @@
-import debug from 'debug';
-const log = debug('WalkForward:createIndicator');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:createIndicator');
 
 /**
  * A factory function that creates indicators from tulind
@@ -50,8 +50,7 @@ export default function createIndicator(indicatorConfig) {
 
             return new Promise((resolve, reject) => {
                 indicatorConfig.indicator(this.history, this.options, (err, results) => {
-                    log('next() called with %o, error is %o, result %o', this.history, err, 
-                        results);
+                    debug('next() called on %s', this.constructor.identifier);
                     if (err) reject(err);
                     // tulip returns an array of results, going back in time; just return the 
                     // most recent result or undefined for every output gotten.

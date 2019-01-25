@@ -1,7 +1,7 @@
 import csv from 'fast-csv';
-import debug from 'debug';
+import logger from '../logger/logger';
 
-const log = debug('WalkForward:exportToCsv');
+const { debug } = logger('WalkForward:exportToCsv');
 
 /**
  * Wraps writeToPath into a promise
@@ -20,11 +20,11 @@ export default function(path, dataAsArray) {
                 }
             })
             .on('finish', () => {
-                log('Data stored to %s', path);
+                debug('Data stored to %s', path);
                 resolve();
             })
             .on('error', (err) => {
-                log('Data could not be stored, %o', err);
+                debug('Data could not be stored, %o', err);
                 reject(new Error(err));
             });
     });

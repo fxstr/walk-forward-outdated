@@ -1,8 +1,8 @@
 import csv from 'fast-csv';
-import debug from 'debug';
+import logger from '../../logger/logger';
 import { getPathsFromSpecs } from './specToPath';
-const log = debug('WalkForward:CSVSource');
 
+const { debug } = logger('WalkForward:CSVSource');
 
 /**
 * Reads multiple CSV files and returns the result. Accepts globs as path specifiers.
@@ -51,13 +51,13 @@ export default class CSVSource {
 		if (this.readPromise) return this.readPromise;
 		this.readPromise = new Promise((resolve, reject) => {
 			this.readInternally().then((result) => {
-				log('Read internally, result is', result);
+				debug('Read internally, result is', result);
 				this.allRead = true;
 				this.readPromise = undefined;
 				resolve(result);
 			}, reject);
 		});
-		log('Reading files, return promise');
+		debug('Reading files, return promise');
 		return this.readPromise;
 	}
 
@@ -69,7 +69,7 @@ export default class CSVSource {
 	*/
 	async readInternally() {
 		const allFiles = await getPathsFromSpecs(this.pathSpecs);
-		log('Read files %o', allFiles);
+		debug('Read files %o', allFiles);
 		const promises = allFiles.map(async (file) => {
 			const fileContent = await this.readFile(file);
 			return {
@@ -89,7 +89,7 @@ export default class CSVSource {
 	*/
 	readFile(path) {
 	
-		log('Read file %s', path);
+		debug('Read file %s', path);
 
 		let content = [];
 		return new Promise((resolve, reject) => {
@@ -99,15 +99,15 @@ export default class CSVSource {
 					content = content.concat(data);
 				})
 				.on('end', () => {
-					log('File %s completely read', path);
+					debug('File %s completely read', path);
 					resolve(content);
 				})
 				.on('data-invalid', (err) => {
-					log('Reading file %s failed: %o', path, err);
+					debug('Reading file %s failed: %o', path, err);
 					reject(new Error(err));
 				})
 				.on('error', (err) => {
-					log('Reading file %s failed: %o', path, err);
+					debug('Reading file %s failed: %o', path, err);
 					reject(new Error(err));
 				});
 		});

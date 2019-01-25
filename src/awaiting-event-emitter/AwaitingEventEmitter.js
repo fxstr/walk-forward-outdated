@@ -1,5 +1,5 @@
-import debug from 'debug';
-const log = debug('WalkForward:AwaitingEventEmitter');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:AwaitingEventEmitter');
 
 export default class AwaitingEventEmitter {
 
@@ -17,7 +17,7 @@ export default class AwaitingEventEmitter {
 				the callbacks.`);
 		}
 
-		log('Add handler for type \'%s\'', type);
+		debug('Add handler for type \'%s\'', type);
 		if (this.handlers.has(type)) this.handlers.get(type).push(callback);
 		else this.handlers.set(type, [callback]);
 
@@ -28,13 +28,13 @@ export default class AwaitingEventEmitter {
 	*/
 	async emit(type, data) {
 		this.checkType(type);
-		log('Emit event for type \'%s\' with data %o', type, data);
+		debug('Emit event for type \'%s\' with data %o', type, data);
 		const callbacks = this.handlers.get(type);
 		if (!callbacks) {
-			log('No handlers available for type \'%s\'', type);
+			debug('No handlers available for type \'%s\'', type);
 			return;
 		}
-		log('Call %d handlers for type \'%s\'', callbacks.length, type);
+		debug('Call %d handlers for type \'%s\'', callbacks.length, type);
 		for (const callback of callbacks) {
 			await callback(data);
 		}

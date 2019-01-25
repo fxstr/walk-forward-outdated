@@ -1,7 +1,7 @@
 import AwaitingEventEmitter from '../awaiting-event-emitter/AwaitingEventEmitter';
 import Instrument from '../instrument/Instrument';
-import debug from 'debug';
-const log = debug('WalkForward:BacktestInstruments');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:BacktestInstruments');
 
 /**
 * Brings instruments into a form that can be consumed by backtest.run() – i.e. an eventEmitter 
@@ -58,15 +58,15 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 	* and emits a data event on every iteration, then awaits completion of the registered handlers.
 	*/
 	async run() {
-		log('run method called, generatorFunction is %o', this.generatorFunction);
+		debug('run method called, generatorFunction is %o', this.generatorFunction);
 		for await (const data of this.generatorFunction()) {
 
-			log('Generated data is %o', data);
+			debug('Generated data is %o', data);
 
 			if (!(data instanceof Map)) throw new Error(`BacktestInstruments: data returned by 
 				generatorFunction must be a map, is ${ data }.`);
 
-			log('New data from generatorFunction is %o, backtest mode %o', data, this.backtestMode);
+			debug('New data from generatorFunction is %o, backtest mode %o', data, this.backtestMode);
 
 			// Is date property missing or not a valid date?
 			// https://stackoverflow.com/questions/1353684/detecting-an-invalid-date-date-instance-
@@ -168,7 +168,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 	*/
 	async emitOpenEvent(data) {
 		if (!this.canEmitOpenEvent(data)) {
-			log('Data %o has no open field, cannot emit open event', data);
+			debug('Data %o has no open field, cannot emit open event', data);
 			return;
 		}
 
@@ -176,7 +176,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 
 		// When 'open' is emitted, orders that were opened on the previous bar will be fulfilled.
 		const openData = new Map([['open', data.get('open')], ['date', data.get('date')]]);
-		log('Emit open event for data %o with data %o', data, openData);
+		debug('Emit open event for data %o with data %o', data, openData);
 		await instrument.add(openData);
 		await this.emit('open', {
 			data: openData,
@@ -214,7 +214,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 			await instrument.add(bareData);
 		}
 
-		log('Emit close event with data %o for instrument %o', bareData, instrument);
+		debug('Emit close event with data %o for instrument %o', bareData, instrument.name);
 		await this.emit('close', {
 			data: bareData,
 			instrument: instrument,
@@ -242,7 +242,7 @@ export default class BacktestInstruments extends AwaitingEventEmitter {
 		const found = this.instruments.find((instrument) => instrument.name === name);
 		if (found) return found;
 		else {
-			log('Create new instrument %o, emit newInstrument', name);
+			debug('Create new instrument %o, emit newInstrument', name);
 			const instrument = new Instrument(name);
 			this.instruments.push(instrument);
 			this.emit('newInstrument', instrument);

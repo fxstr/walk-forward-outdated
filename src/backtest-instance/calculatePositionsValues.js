@@ -1,6 +1,6 @@
 import calculatePositionValue from './calculatePositionValue';
-import debug from 'debug';
-const log = debug('WalkForward:calculatePositionsValues');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:calculatePositionsValues');
 
 /**
  * Calculates current values for all positions passed. Positions is the object as used in 
@@ -24,7 +24,7 @@ export default function calculatePositionsValues(positions, prices) {
 			return clonedSubPosition;
 		});
 
-		log('new subPositions are %o', subPositions);
+		debug('new subPositions are %o', subPositions);
 
 		newPositions.set(instrument, {
 			value: subPositions.reduce((prev, subPos) => prev + subPos.value, 0),

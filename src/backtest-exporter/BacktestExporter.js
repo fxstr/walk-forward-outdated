@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import debug from 'debug';
+import logger from '../logger/logger';
 import DataSeriesExporter from '../data-series-exporter/DataSeriesExporter';
 import ViewableDataSeries from '../data-series/ViewableDataSeries';
 import TransformableDataSeries from '../data-series/TransformableDataSeries';
@@ -8,7 +8,7 @@ import DataSeries from '../data-series/DataSeries';
 import Instrument from '../instrument/Instrument';
 import exportToCsv from '../export-to-csv/exportToCsv';
 import HighChartsExporter from './HighChartsExporter';
-const log = debug('WalkForward:BacktestExporter');
+const { debug } = logger('WalkForward:BacktestExporter');
 
 
 export default class BacktestExporter {
@@ -269,15 +269,15 @@ export default class BacktestExporter {
             await instrumentClone.add(new Map(row));
         }
 
-        console.log('instrument is %o', instrument.viewConfig);
-        console.log('instrumentClone is %o', instrumentClone.viewConfig);
+        console.debug('instrument is %o', instrument.viewConfig);
+        console.debug('instrumentClone is %o', instrumentClone.viewConfig);
 
         await this.createDirectoryIfNotExists(instrumentPath);
 
         // CSV export
         const destination = path.join(instrumentPath, instrumentClone.name);
         const exporter = new DataSeriesExporter();
-        log('Export instrument %s to %s', instrumentClone.name, destination);
+        debug('Export instrument %s to %s', instrumentClone.name, destination);
         await exporter.export(instrumentClone, destination);
 
         // Highstock export
@@ -298,7 +298,7 @@ export default class BacktestExporter {
             fs.access(path, fs.constants.F_OK, (err) => {
                 // No error thrown, directory exists
                 if (!err) return resolve();
-                log('Create directory %s', path);
+                debug('Create directory %s', path);
                 fs.mkdir(path, (err) => err ? reject(err) : resolve());
             });
         });

@@ -1,7 +1,7 @@
 import combineParameters from '../combine-parameters/combineParameters';
 import { generateLogarithmicParameters } from '../generate-parameters/generateParameters';
-import debug from 'debug';
-const log = debug('WalkForward:Optimization');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:Optimization');
 
 export default class Optimization {
 
@@ -47,7 +47,7 @@ export default class Optimization {
 			valueMap.set(config[0], this.getValuesForParameter(config[1]));
 		});
 		const result = combineParameters(valueMap);
-		log('Parameter sets for %o are %o', valueMap, result);
+		debug('Parameter sets for %o are %o', valueMap, result);
 		return result;
 	}
 

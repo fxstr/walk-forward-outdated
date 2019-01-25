@@ -1,10 +1,10 @@
 import test from 'ava';
 import Backtest from './Backtest';
 import BacktestInstance from '../backtest-instance/BacktestInstance';
-import debug from 'debug';
+import logger from '../logger/logger';
 import createTestData from '../helpers/createTestData';
 //import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
-const log = debug('WalkForward:Backtest.require');
+const { debug } = logger('WalkForward:Backtest.require');
 
 function setupData(passedData) {
 
@@ -24,10 +24,10 @@ function setupData(passedData) {
 		async read() {
 			if (this.index >= this.data.length) return new Promise((resolve) => resolve(false));
 			return new Promise((resolve) => {
-				log('Read from dataSource, index is %d', this.index);
+				debug('Read from dataSource, index is %d', this.index);
 				if (!this.data[this.index]) resolve(false);
 				const result = this.data[this.index];
-				log('Return result %o', result);
+				debug('Return result %o', result);
 				resolve([result]);
 				this.index++;
 			});
@@ -147,11 +147,11 @@ test('validates and stores data sources', (t) => {
 	const addedInstruments = [];
 	const addedData = [];
 	instruments.on('newInstrument', (...data) => {
-		log('Instrument %o', data);
+		debug('Instrument %o', data);
 		addedInstruments.push(data);
 	});
 	instruments.on('open', (...data) => {
-		log('Data %o', data);
+		debug('Data %o', data);
 		addedData.push(data);
 	});
 	await instruments.run();
@@ -295,7 +295,7 @@ test('executes performanceIndicators', async (t) => {
 	bt.addPerformanceIndicators(new PI());
 	const results = await bt.run();
 	results.forEach((result) => {
-		console.log('result', result);
+		console.debug('result', result);
 		t.is(result.performanceResults.get('testPI'), 3.5);
 	});
 });

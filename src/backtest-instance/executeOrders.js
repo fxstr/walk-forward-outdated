@@ -1,7 +1,7 @@
-import debug from 'debug';
+import logger from '../logger/logger';
 import colors from 'colors';
 import executeOrder from './executeOrder';
-const log = debug('WalkForward:executeOrders');
+const { debug } = logger('WalkForward:executeOrders');
 
 /**
  * Executes orders: basically takes positions and returns new positions.
@@ -16,17 +16,30 @@ const log = debug('WalkForward:executeOrders');
 export default function executeOrders(positions, orders, prices, cash) {
 
 
+
+	const positionsForLog = [];
+	for (const [instrument, position] of positions) {
+		positionsForLog.push({ instrument: instrument.name, position: position.size});
+	}
+	const ordersForLog = orders.map((order) => ({
+		instrument: order.instrument.name,
+		size: order.size,
+	}));
+	const pricesForLog = [];
+	for (const [instrument, price] of prices) {
+		pricesForLog.push({ instrument: instrument.name, price: price });
+	}
+	debug('Execute orders, positions are %o, orders %o, prices %o, cash %d', positionsForLog, 
+		ordersForLog, pricesForLog, cash);
+
 	// Start by cloning the old positions
 	const newPositions = new Map(positions);
-
-	log('Execute orders, positions are %o, orders %o, prices %o, cash %d', positions, orders, 
-		prices, cash);
 
 	orders
 		// Don't order if there's no price for this bar
 		.filter((order) => {
 			if (!prices.has(order.instrument)) {
-				log(`Cannot take position for instrument %s, no price available`, 
+				debug(`Cannot take position for instrument %s, no price available`, 
 					order.instrument.name);
 				return false;
 			}

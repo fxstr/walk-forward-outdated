@@ -1,5 +1,5 @@
-import debug from 'debug';
-const log = debug('WalkForward:runAlgorithms');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:runAlgorithms');
 
 /**
 * Does all the magic, really: 
@@ -53,21 +53,21 @@ export default async function runAlgorithms(originalParams, algos, methodName, h
 			throw new Error(`runAlgorithms: Algorithm doesn't have a ${methodName}() method.`);
 		}
 
-		log('Run algorithm %o with params %o', algo, params);
+		debug('Run algorithm %o with params %o', algo, params);
 		const result = await algo[methodName](...params);
 		// Update params: First item is the result returned by algo, following items stay the same
 		params = [result, ...params.slice(1)];
-		log('Result for algorithm %o is %o, new parameters are %o', algo, result, params);
+		debug('Result for algorithm %o is %o, new parameters are %o', algo, result, params);
 		
 		// If haltOnFalse was set, halt algorithms as soon as any algorithm's methodName method 
 		// returns false and return false
-		log('Result of %s() method is %o; haltOnFalse is %o', methodName, result, haltOnFalse);
+		debug('Result of %s() method is %o; haltOnFalse is %o', methodName, result, haltOnFalse);
 		if (result === false && haltOnFalse) {
 			// If runAlgorithms returns false, return false.
 			return false;
 		}
 	}
 	// Return first parameter passed (orders)
-	log('Return orders %o', params[0]);
+	debug('Return orders %o', params[0]);
 	return params[0];
 }

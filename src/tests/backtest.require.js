@@ -8,8 +8,8 @@ import test from 'ava';
 import Backtest, { rejectOnFalse, runThrough, BacktestCSVSource, Algorithm } from '../index.js';
 import { ProfitFactor, Cagr } from '../performanceIndicators';
 import { Sma as SMA, Stoch } from '../indicators.js';
-import debug from 'debug';
-const log = debug('WalkForward:BacktestTest');
+import logger from '../logger/logger';
+const { debug, info } = logger('WalkForward:BacktestTest');
 
 function clearDirectory() {
 	const output = path.join(__dirname, 'test-data', 'output');
@@ -27,7 +27,7 @@ class SMAAlgo extends Algorithm {
 
 	constructor(field, fastSMA, slowSMA) {
 		super();
-		log('SMAAlgo: Init with %s %d %d, is %o', field, fastSMA, slowSMA, this);
+		debug('SMAAlgo: Init with %s %d %d, is %o', field, fastSMA, slowSMA, this);
 		this.field = field;
 		// Params are floats – convert them to ints
 		this.fastSMALength = Math.round(fastSMA, 10);
@@ -35,7 +35,7 @@ class SMAAlgo extends Algorithm {
 	}
 
 	onNewInstrument(instrument) {
-		log('SMAAlgo: Instrument %o added; fast is %d, slow %d', instrument.name, 
+		debug('SMAAlgo: Instrument %o added; fast is %d, slow %d', instrument.name, 
 			this.fastSMALength, this.slowSMALength);
 		instrument.addTransformer([this.field], new SMA(this.fastSMALength),
 			this.fastSMAKey);
@@ -44,13 +44,13 @@ class SMAAlgo extends Algorithm {
 	}
 
 	onClose(orders, instrument) {
-		log('onClose, orders are %o, instrument is %o', orders, instrument);
+		debug('onClose, orders are %o, instrument is %o', orders, instrument);
 		const fast = instrument.head().get(this.fastSMAKey);
 		const slow = instrument.head().get(this.slowSMAKey);
-		log('%o %o: %o > %o?', instrument.head().get('date'), instrument.name, fast, slow);
+		debug('%o %o: %o > %o?', instrument.head().get('date'), instrument.name, fast, slow);
 		if (slow !== undefined && fast !== undefined) {
 			if (fast > slow) {
-				log('SMA: Create order for %o', instrument.name);
+				debug('SMA: Create order for %o', instrument.name);
 				return [...orders, { size: 1, instrument: instrument }];
 			}
 			else if (fast < slow) {
@@ -103,14 +103,14 @@ class EqualPositionSize extends Algorithm {
 		// Make it async – just to test
 		await new Promise((resolve) => setTimeout(resolve), 20);
 
-		log(
+		debug(
 			'EqualPositionSize: Original orders on %o are %o',
 			instrument.head().get('date'),
 			orders.map(order => order.instrument.name).join(', ')
 		);
 
 		const instrumentsWithPositions = [...this.getCurrentPositions().keys()];
-		log(
+		debug(
 			'EqualPositionSize: Current instruments with positions are %o',
 			instrumentsWithPositions.map(instrument => instrument.name).join(', ')
 		);
@@ -121,19 +121,19 @@ class EqualPositionSize extends Algorithm {
 			order.size < 0 || !instrumentsWithPositions.includes(order.instrument)
 		));
 
-		log(
+		debug(
 			'EqualPositionSize: Orders without positions are %o',
 			ordersWithoutPositions.map(order => order.instrument.name).join(', ')
 		);
 
 		// Remove orders trying to close positions that don't exist
 		const ordersWithoutInvalidCloses = ordersWithoutPositions.filter(order => {
-			log(this.getCurrentPositions().get(order.instrument));
+			debug(this.getCurrentPositions().get(order.instrument));
 			const position = this.getCurrentPositions().get(order.instrument);
 			return order.size > 0 || (position && position.size);
 		});
 
-		log(
+		debug(
 			'EqualPositionSize: Valid orders are %o',
 			ordersWithoutInvalidCloses.map(order => order.instrument.name).join(', ')
 		);
@@ -148,11 +148,16 @@ class EqualPositionSize extends Algorithm {
 		const newOrders = ordersWithoutInvalidCloses.map(order => {
 			
 			// Order size -1: Close the whole current position *if* there is a current position
+			// TODO: FUCK! That won't work because on the 2nd iteration, size isn't -1 any more,
+			// but previousSize * -1!!!
 			if (order.size === -1) {
+				info('Order size -1 for %s', order.instrument.name);
 				return{
 					instrument: order.instrument,
 					size: this.getCurrentPositions().get(order.instrument).size * -1,
 				};
+			} else if (order.size < 0) {
+				return order;
 			} else {
 				return {
 					// 0.9: Security margin if prices go up before the next open
@@ -163,7 +168,7 @@ class EqualPositionSize extends Algorithm {
 			}
 		});
 
-		log(
+		debug(
 			'EqualPositionSize: %d instruments, %d positions, without positions %d; cash %d, moneyPerInstrument %d, orders were %o and are %o',
 			this.getInstruments().length,
 			this.getCurrentPositions().size, 
@@ -190,7 +195,7 @@ async function runTest() {
 	const dataSource = new BacktestCSVSource(
 		(csvName) => {
 			const instrumentName = csvName.substring(csvName.lastIndexOf('/') + 1, csvName.length - 4);
-			log('runTest, Instrument name is %o from csv %o', instrumentName, csvName);
+			debug('runTest, Instrument name is %o from csv %o', instrumentName, csvName);
 			return instrumentName;
 		},
 		[path.join(__dirname, 'test-data/input/*.csv')],

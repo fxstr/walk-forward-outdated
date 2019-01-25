@@ -1,5 +1,5 @@
-import debug from 'debug';
-const log = debug('WalkForward:DataGenerator');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:DataGenerator');
 
 /**
 * Does two things: 
@@ -32,7 +32,7 @@ export default class DataGenerator {
 				sort function; if you pass a second argument, make sure it's a function.`);
 		}
 
-		log('Initialize with source %o. Sort function? %o', source, !!sortFunction);
+		debug('Initialize with source %o. Sort function? %o', source, !!sortFunction);
 		this.source = source;
 		this.sortFunction = sortFunction;
 
@@ -44,7 +44,7 @@ export default class DataGenerator {
 	*/
 	async* generateData() {
 
-		log('generateData called');
+		debug('generateData called');
 
 		// Scope of index must be the function, not the instance if run() method should be 
 		// callable multiple times (which it needs to be in order to run a backtest with multiple
@@ -57,13 +57,13 @@ export default class DataGenerator {
 			// to source.read() which fills up the cache. Never return a record directly from the 
 			// source.
 			if (this.cache.length > currentIndex) {
-				log('Take data from cache with length %d, index is %d. Sort? %o', this.cache.length, 
+				debug('Take data from cache with length %d, index is %d. Sort? %o', this.cache.length, 
 					currentIndex, !!this.sortFunction);
 				const sorted = this.sortFunction ? 
 					this.cache.slice(0).sort(this.sortFunction) :
 					this.cache;
 				const nextEntry = sorted[currentIndex];
-				log('Return entry %o', nextEntry);
+				debug('Return entry %o', nextEntry);
 				yield nextEntry;
 				currentIndex++;
 			}
@@ -71,9 +71,9 @@ export default class DataGenerator {
 			// Cache is empty: Try to read next lines from the source. If source returns, continue
 			// reading from the cache; else break.
 			else {
-				log('Source has no more data; try to read');
+				debug('Source has no more data; try to read');
 				const nextData = await this.source.read();
-				log('Got data from read: %o', nextData);
+				debug('Got data from read: %o', nextData);
 
 				// We expect an array (one or multiple entries) or false!
 				if (nextData !== false) {
@@ -81,10 +81,10 @@ export default class DataGenerator {
 						by read function of your data source must either be an Array or false, 
 						currently is ${ nextData }.`);
 					this.cache.push(...nextData);
-					log('Add data %o to cache to later read from', nextData);
+					debug('Add data %o to cache to later read from', nextData);
 					continue;
 				} else {
-					log('Out of data');
+					debug('Out of data');
 					break;
 				}
 			}

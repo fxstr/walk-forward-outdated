@@ -1,5 +1,5 @@
-import debug from 'debug';
-const log = debug('WalkForward:combineParameters');
+import logger from '../logger/logger';
+const { debug } = logger('WalkForward:combineParameters');
 /**
 * Takes parameters as a Map in the form of: 
 * const a = new Map();
@@ -25,7 +25,7 @@ export default function combineParameters(parameters) {
 				newParamCombinations.push(newCombination);
 			});
 		});
-		log('New parameter combinations are %o', newParamCombinations);
+		debug('New parameter combinations are %o', newParamCombinations);
 		return newParamCombinations;
 	}, [new Map()]);
 

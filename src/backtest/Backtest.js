@@ -1,4 +1,4 @@
-import debug from 'debug';
+import logger from '../logger/logger';
 import colors from 'colors';
 import DataGenerator from '../data-generator/DataGenerator';
 import BacktestInstruments from '../backtest-instruments/BacktestInstruments';
@@ -6,7 +6,7 @@ import BacktestInstance from '../backtest-instance/BacktestInstance';
 import Optimization from '../optimization/Optimization';
 import dataSortFunction from '../data-sort-function/dataSortFunction';
 import BacktestExporter from '../backtest-exporter/BacktestExporter';
-const log = debug('WalkForward:Backtest');
+const { debug } = logger('WalkForward:Backtest');
 
 /**
 * The main class which holds most functionality.
@@ -64,7 +64,7 @@ export default class Backtest {
 		
 		// Invalid keys (warning)
 		Array.from(backtestConfig.keys()).forEach((key) => {
-			if (validKeys.indexOf(key) === -1) console.log(colors.yellow(`WARNING: You passed a 
+			if (validKeys.indexOf(key) === -1) console.debug(colors.yellow(`WARNING: You passed a 
 				config through Backtest.setConfiguration() that contains an unknown 
 				key (${ key }).`));
 		});
@@ -132,7 +132,7 @@ export default class Backtest {
 		}
 
 		this.dataSource = source;		
-		log('Set dataSource to %o', source);
+		debug('Set dataSource to %o', source);
 
 	}
 
@@ -196,7 +196,7 @@ export default class Backtest {
 			// it must be re-instantiated every single time we run a backtest. Caching is done 
 			// through DataGenerator 
 			const generatorFunction = generator.generateData.bind(generator);
-			log('generatorFunction is %o', generatorFunction);
+			debug('generatorFunction is %o', generatorFunction);
 			const instruments = new BacktestInstruments(generatorFunction, 	true);
 
 			const parameterizedStrategyRunner = this.strategyFunction(parameterSet);
@@ -209,7 +209,7 @@ export default class Backtest {
 			this.instances.set(parameterSet, instance);
 		}
 
-		log('Run done: %o', this.instances);
+		debug('Run done: %o', this.instances);
 		return this.instances;	
 
 	}

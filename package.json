@@ -21,7 +21,10 @@
     "@babel/plugin-syntax-async-generators": "^7.0.0",
     "@babel/plugin-transform-modules-commonjs": "^7.1.0",
     "@babel/register": "^7.0.0",
-    "ava": "^1.0.0-rc.1",
+    "@joinbox/eslint-config-joinbox": "^1.0.8",
+    "ava": "^1.1.0",
+    "babel-eslint": "^10.0.1",
+    "debug": "^4.1.1",
     "del": "^3.0.0",
     "dir-compare": "^1.4.0",
     "nyc": "^13.1.0"
@@ -34,7 +37,6 @@
     "require": [
       "@babel/register"
     ],
-    "tap": true,
     "failFast": true
   },
   "babel": {

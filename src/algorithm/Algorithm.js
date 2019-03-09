@@ -7,17 +7,16 @@ export default class Algorithm {
 
     /**
      * Called from BacktestInstance and propagated through runAlgorithms
-     * @param {[type]} backtest [description]
+     * @param {BacktestInstance} backtest    BacktestInstance that this algorithm belongs to
      */
     setBacktest(backtest) {
         this.backtest = backtest;
-        // this.setupInstrumentListeners();
     }
 
     /**
      * Returns the current positions we're holding. Is a wrapper for this.backtest.positions.head()
      * which filters all columns that do not contain instruments.
-     * @return {Map}      All positions we're currently holding. Key is the instrument, value an 
+     * @return {Map}      All positions we're currently holding. Key is the instrument, value an
      *                    object with properties size (amount of instruments we're holding), value
      *                    (value of the position we're holding for the instrument) and positions
      *                    (all sub-positions for the instrument).
@@ -49,19 +48,19 @@ export default class Algorithm {
         return this.backtest.accounts;
     }
 
-    onClose(orders) {
+    handleClose(orders) {
         debug('onClose method not implemented for %s', this.constructor.name);
         // Just return the original order if class was not derived
         return orders;
     }
 
-    onNewInstrument() {
+    handleNewInstrument() {
         debug('onNewInstrument method not implemented for %s', this.constructor.name);
     }
 
     /**
      * Listens to newInstrument on backtest's instruments and calls corresponding
-     * handlers if available. TODO: Move newInstruments 
+     * handlers if available. TODO: Move newInstruments
      * @private
      */
     /* setupInstrumentListeners() {
@@ -79,6 +78,6 @@ export default class Algorithm {
                 this.backtest.setOrders(orders);
             }
         });
-    } */ 
+    } */
 
 }

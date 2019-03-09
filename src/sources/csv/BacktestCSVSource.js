@@ -1,75 +1,64 @@
-import CSVSource from './CSVSource';
-import logger from '../../logger/logger';
-const { debug } = logger('WalkForward:BacktestCSVSource');
+import dataSortFunction from '../../helpers/dataSortFunction.js';
+import groupArrayByValue from '../../helpers/groupArrayByValue.js';
 
 
 /**
-* Wrapper around CSVSource that formats CSV's data for use with backtests:
-* - file name becomes instrument name
-* - date becomes a date
-* - numbers become reeeeeal numbers …
-*/
-export default class BacktestCSVSource extends CSVSource {
+* CSV source that has been reformatted to return the results expected by BacktestInstruments,
+* i.e. is an async generator. Makes sure that data are only read once (to minimize I/O operations)
+* by using a promise for reading data.
+ */
+export default class BacktestCSVSource {
 
-	constructor(instrumentNameFunction, ...args) {
-		super(...args);
+    /**
+     * Turns to true as soon as we have started reading CSV data
+     */
+    csvReadingPromise = false;
 
-		if (typeof instrumentNameFunction !== 'function') {
-			throw new Error(`BacktestCSVSource: Pass a function that extracts the instrument's name
-				from the file name as first argument of constructor.`);
-		}
-		this.instrumentNameFunction = instrumentNameFunction;
-	}
+    constructor(csvSource) {
+        if (!csvSource) {
+            throw new Error(`BacktestCSVSource: Pass a valid CSV source as argument, is ${csvSource}.`);
+        }
+        if (!csvSource.read || typeof csvSource.read !== 'function') {
+            throw new Error(`BacktestCSVSource: Make sure the CSV source you pass in has a read method, is ${csvSource.read}.`);
+        }
+        this.csvSource = csvSource;
+    }
 
-	/**
-	* Read file (CSVSource), then re-format data retrieved
-	*/
-	async read(...args) {
-		// https://github.com/babel/babel/issues/3930 (no super() on async methods)
-		debug('Read files %s', this.pathSpecs.join(', '));
-		return CSVSource.prototype.read.apply(this, args).then((result) => {
-			if (result === false) return false;
-			const formatted = result.map((fileContent) => this.formatFile(fileContent));
-			// Flatten array – content of all files goes into one single array (as needed by
-			// DataGenerator)
-			const flattened = formatted.reduce((prev, item) => prev.concat(item), []);
-			debug('Formatted and flattened content returned by read is %o', flattened);
-			return flattened;
-		});
-	}
+    /**
+     * Main function: Reads CSV, sorts data and yields it interval by interval (e.g. daily)
+     */
+    async* generate() {
+        await this.setupData();
+        // eslint-disable-next-line no-unused-vars
+        for (const [key, content] of this.csvDataGroupedByDate) {
+            yield content;
+        }
+    }
 
-	/**
-	* Re-formats a file
-	*/
-	formatFile(fileContent) {
-		const instrument = this.instrumentNameFunction(fileContent.file);
-		debug('Get instrument name for file %s, is %s', fileContent.file, instrument);
-		return fileContent.content.map((rowContent) => {
-			return this.formatRow(rowContent, instrument);
-		});
-	}
-
-	/**
-	* Formats a single CSV row to the format matching Backtest
-	*/
-	formatRow(rowContent, instrument) {
-		debug('Format row %o for instrument %s', rowContent, instrument);
-		if (!instrument) {
-			throw new Error(`BacktestCSVSource: Instrument not provided (maybe you passed an
-				instrumentNameFunction that does not work as expected).`);
-		}
-		if (!rowContent.date) {
-			throw new Error(`BacktestCSVSource: Data does not contain a date field.`);
-		}
-		const formatted = new Map();
-		formatted.set('instrument', instrument);
-		// Go through all properties of rowContent; convert all to numbers except date which
-		// becomes a new Date().
-		Object.keys(rowContent).forEach((key) => {
-			if (key === 'date') formatted.set(key, new Date(rowContent[key]));
-			else formatted.set(key, Number(rowContent[key]));
-		});
-		return formatted;
-	}
+    /**
+     * Reads data from source passed in, sorts and groups it and stores it in
+     * this.csvDataGroupedByDate
+     * @private
+     */
+    async setupData() {
+        // First call: Fetch all data, sort and store it.
+        if (!this.csvReadingPromise) {
+            this.csvReadingPromise = this.csvSource.read();
+            const csvData = await this.csvReadingPromise;
+            // Sort by date first so that all entries in the map grouped by date are
+            // chronologically sorted
+            const sortedCSVData = csvData.slice(0).sort(dataSortFunction);
+            this.csvDataGroupedByDate = groupArrayByValue(
+                sortedCSVData,
+                // Make sure we use a Number (and not a native date) to group items by as a Date
+                // instance will never equal another Date instance
+                item => item.get('date').getTime(),
+            );
+        }
+        // Subsequent calls: Wait to make sure data is ready
+        else {
+            await this.csvReadingPromise;
+        }
+    }
 
 }

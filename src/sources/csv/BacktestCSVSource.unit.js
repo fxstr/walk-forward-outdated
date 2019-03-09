@@ -1,50 +1,56 @@
 import test from 'ava';
-import path from 'path';
 import BacktestCSVSource from './BacktestCSVSource';
 
 function setupData() {
-	function instrumentNameFunction(name) {
-		// Get file name, use it as instrument name
-		return name.match(/.*\/([^/]*)\.csv$/)[1];
-	}
-	return { instrumentNameFunction };
+    const data = [
+        new Map([
+            ['date', new Date(2019, 0, 1)],
+            ['open', 3],
+        ]),
+        new Map([
+            ['date', new Date(2019, 0, 5)],
+            ['open', 2],
+        ]),
+        new Map([
+            ['date', new Date(2019, 0, 2)],
+            ['open', 4],
+        ]),
+        new Map([
+            ['date', new Date(2019, 0, 1)],
+            ['open', 5],
+        ]),
+        new Map([
+            ['date', new Date(2019, 0, 4)],
+            ['open', 2],
+        ]),
+    ];
+    const dataSource = {
+        read: async() => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+            return data;
+        },
+    };
+    return { data, dataSource };
 }
 
-test('throws correct errors on init', (t) => {
-	t.throws(() => new BacktestCSVSource(), /First argument/);
+test('fails if initialized invalidly', (t) => {
+    t.throws(() => new BacktestCSVSource(), /valid CSV source/);
+    t.throws(() => new BacktestCSVSource({}), /read method/);
+    t.throws(() => new BacktestCSVSource({ read: 3 }), /read method/);
+    t.notThrows(() => new BacktestCSVSource({ read: () => {} }), /read method/);
 });
 
-test('throws errors on read', async (t) => {
-	// Invalid return value of file name function
-	const { instrumentNameFunction } = setupData();
-	const csv1 = new BacktestCSVSource(
-		function() { return false; },
-		[path.join(__dirname, 'backtest*/*.csv')],
-	);
-	await t.throwsAsync(() => csv1.read(), /Instrument not provided/);
-	// Date missing in CSV
-	const csv2 = new BacktestCSVSource(
-		instrumentNameFunction,
-		[path.join(__dirname, 'backtest*/no-date.csv')],
-	);
-	await t.throwsAsync(() => csv2.read(), /date field/);
-});
-
-
-test('reads files', async (t) => {
-	const { instrumentNameFunction } = setupData();
-	const csv = new BacktestCSVSource(
-		instrumentNameFunction,
-		[path.join(__dirname, 'backtest*/t*.csv')],
-	);
-	const result = await csv.read();
-	t.is(result.length, 8);
-	// 4 rows in test1
-	const firstItem = result[0];
-	t.deepEqual(firstItem.get('date'), new Date('2018-01-02'));
-	t.is(firstItem.get('instrument'), 'test1');
-	t.is(firstItem.get('open'), 3);
-	t.is(firstItem.get('high'), 6);
-	t.is(firstItem.get('low'), 2);
-	t.is(firstItem.get('close'), 5);
+test('generates data', async(t) => {
+    const { dataSource, data } = setupData();
+    const bt = new BacktestCSVSource(dataSource);
+    const rows = [];
+    for await (const row of bt.generate()) {
+        rows.push(row);
+    }
+    t.deepEqual(rows, [
+        [data[0], data[3]],
+        [data[2]],
+        [data[4]],
+        [data[1]],
+    ]);
 });

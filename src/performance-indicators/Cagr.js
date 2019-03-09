@@ -7,8 +7,8 @@ export default class Cagr {
         const start = firstEntry.get('cash');
         const msDiff = lastEntry.get('date').getTime() - firstEntry.get('date').getTime();
         const yearDiff = msDiff / 1000 / 60 / 60 / 24 / 365;
-        //console.log('start, end, yearDiff', start, end, yearDiff);
-        return (end / start) ** (1 / yearDiff) - 1;
+        // console.log('start, end, yearDiff', start, end, yearDiff);
+        return ((end / start) ** (1 / yearDiff)) - 1;
     }
 
     getName() {

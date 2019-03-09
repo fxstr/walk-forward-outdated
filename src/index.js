@@ -1,7 +1,6 @@
 import Backtest from './backtest/Backtest';
-import BacktestCSVSource from './sources/csv/BacktestCSVSource';
+import CSVSource from './sources/csv/CSVSource';
 import Algorithm from './algorithm/Algorithm';
-import { runThrough, rejectOnFalse } from './runners/runners.js';
 
-export { BacktestCSVSource, runThrough, rejectOnFalse, Algorithm };
+export { CSVSource, Algorithm };
 export default Backtest;

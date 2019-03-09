@@ -1,4 +1,4 @@
-import debug from 'debug'; 
+import debug from 'debug';
 import { getConfig } from './environment';
 import getDebugLevels from './getDebugLevels';
 import debugLevels from './debugLevels';
@@ -6,7 +6,7 @@ import debugLevels from './debugLevels';
 /**
  * Does the acutal logging, is the function returned when calling debug(namespace).
  * @param  {String} logLevel Log level
- * @param  {function} logFunction 
+ * @param  {function} logFunction
  * @param  {Array} originalParams
  */
 function doLog(logLevel, logFunction, ...originalParams) {
@@ -17,9 +17,9 @@ function doLog(logLevel, logFunction, ...originalParams) {
 }
 
 /**
- * Main export: Exports an object with different log levels as keys, each containing the 
+ * Main export: Exports an object with different log levels as keys, each containing the
  * corresponding log function.
- * 
+ *
  * Use as follows:
  *
  * import logger from 'logger';
@@ -28,7 +28,7 @@ function doLog(logLevel, logFunction, ...originalParams) {
  *
  * @param {String}      namespace
  * @return {Object}     Object with levels as keys and corresponding log functions as values, e.g.
- *                      { info: () => doInfoLogFunction }      
+ *                      { info: () => doInfoLogFunction }
  */
 export default function(namespace) {
     // Create new debugger (from npm debug module)

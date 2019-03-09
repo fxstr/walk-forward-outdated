@@ -24,7 +24,7 @@ test('reads and parses config', (t) => {
     resetEnv(original);
 });
 
-test('reads and parses config', (t) => {
+test('uses all levels when none is set', (t) => {
     const original = setEnv();
     t.deepEqual(getDebugLevels(undefined), ['debug', 'info', 'warn', 'error']);
     resetEnv(original);

@@ -8,6 +8,7 @@ import DataSeries from '../data-series/DataSeries';
 import Instrument from '../instrument/Instrument';
 import exportToCsv from '../export-to-csv/exportToCsv';
 import HighChartsExporter from './HighChartsExporter';
+
 const { debug } = logger('WalkForward:BacktestExporter');
 
 
@@ -16,34 +17,110 @@ export default class BacktestExporter {
     instrumentsSubDirectory = 'instruments';
 
     /**
-     * Data series for all exported accounts; exported accounts contain a total (which is missing 
+     * Data series for all exported accounts; exported accounts contain a total (which is missing
      * in original accounts). Needed to create list with *all* accounts (to compare performance).
      */
     exportedAccounts = new Map();
 
+    /**
+     * Exports data of a backtest
+     * @param  {Map} instances          Key: parameter set, value: BacktestInstance
+     * @param  {string} directory       Base path for export
+     */
     async export(instances, directory) {
         if (!instances || !(instances instanceof Map)) {
-            throw new Error(`BacktestExporter: instances must be a Map of BacktestInstances, is
-                ${ instances }.`);
+            throw new Error(`BacktestExporter: instances must be a Map of BacktestInstances, is ${instances}.`);
         }
         if (!directory || typeof directory !== 'string') {
-            throw new Error(`BacktestExporter: directory passed must be a string, is 
-                ${ directory }.`);
+            throw new Error(`BacktestExporter: directory passed must be a string, is ${directory}.`);
         }
         this.instances = instances;
 
         const folderName = this.createBaseFolder(directory);
-        this.directory = path.join(directory, folderName + '');
+        this.directory = path.join(directory, `${folderName}`);
 
         // Create base directory
         await this.createDirectoryIfNotExists(this.directory);
-        
+
         await this.exportInstances();
 
         // Export an overview over all accounts; do this *after* we have exported single instance
         // because only now we will have accounts available
         await this.exportAllAccounts(this.directory);
+
+        await this.exportAllPerformanceIndicators(instances, this.directory);
+
     }
+
+    /**
+     * Exports performance indicators for all instances in a table (to compare how parameterSets
+     * performed), also exports parameter set itself
+     * @param  {Map} instances              See constructor
+     * @param  {string} directory
+     */
+    async exportAllPerformanceIndicators(instances, directory) {
+
+        // Table contains:
+        // First row: Number of run
+        // Following rows: Optimized parameterr sets (1 row per parameter))
+        // Following rows: Performance indicators
+        // First col: Title of row
+        // Subsequent cols: Data (col 1 per parameter set)
+        const results = [];
+
+        // First row: 'Row', then all the runs
+        let currentRun = 0;
+        const firstRow = ['Run'];
+        while (currentRun < instances.size) {
+            currentRun += 1;
+            // Export performance indicator results
+            // Re-format performance results; row 0: all names, row 1: all values
+            firstRow.push(currentRun);
+        }
+        results.push(firstRow);
+
+        // Add parameters as rows
+        const params = [];
+        let paramNames = [];
+        for (const [paramSet] of instances) {
+            // Careful: paramSet's key is undefined if no optimizations were made
+            if (!paramSet) break;
+            params.push(Array.from(paramSet.values()));
+            // Update names: Only once and *only* if there are parameters available; if not, keep
+            // the original empty array
+            if (!paramNames.length) {
+                paramNames = Array.from(paramSet.keys());
+            }
+        }
+        paramNames.forEach((item, index) => {
+            const row = [];
+            row.push(item);
+            for (const instanceParam of params) {
+                row.push(instanceParam[index]);
+            }
+            results.push(row);
+        });
+
+        // Add performance indicators (every indicator becomes a row)
+        const firstInstance = instances.size ? Array.from(instances.values())[0] : undefined;
+        // Only add performance results if we have instances
+        if (firstInstance) {
+            // Array with name of all performance indicators
+            const performanceIndicatorNames = Array.from(firstInstance.performanceResults.keys());
+            // Create a new row for every performance result
+            for (const performanceIndicatorName of performanceIndicatorNames) {
+                const row = [performanceIndicatorName];
+                // Add a col with the performance result of every instance
+                for (const [, instance] of instances) {
+                    row.push(instance.performanceResults.get(performanceIndicatorName));
+                }
+                results.push(row);
+            }
+        }
+
+        await exportToCsv(path.join(directory, 'performances.csv'), results);
+    }
+
 
 
     /**
@@ -51,14 +128,14 @@ export default class BacktestExporter {
      * @returns {String} Folder's name (counts up)
      */
     createBaseFolder(directory) {
-        // Store everything in a subfolder that counts upwards; don't use current date as it's 
+        // Store everything in a subfolder that counts upwards; don't use current date as it's
         // difficult to test.
         const folderContent = fs.readdirSync(directory);
         let folderName = 1;
         // Walk through files/folders; if name is a valid int, set folderName to next higher int
         folderContent.forEach((content) => {
             const parsed = parseInt(content, 10);
-            if (!isNaN(parsed)) folderName = parsed + 1;
+            if (!Number.isNaN(parsed)) folderName = parsed + 1;
         });
         return folderName;
     }
@@ -69,7 +146,7 @@ export default class BacktestExporter {
      * @private
      */
     async exportInstances() {
-        
+
         let index = 0;
         for (const [params, instance] of this.instances) {
             await this.exportInstance(++index, instance, params);
@@ -106,7 +183,7 @@ export default class BacktestExporter {
         const exporter = new DataSeriesExporter();
         await exporter.export(allAccounts, path.join(basePath, 'accounts'));
         const chartExporter = new HighChartsExporter();
-        chartExporter.export(allAccounts, basePath, 'accounts');
+        await chartExporter.export(allAccounts, basePath, 'accounts');
 
 
     }
@@ -116,12 +193,12 @@ export default class BacktestExporter {
     /**
      * Exports a signle instance (one test run with a given set of params)
      * @param {number} number               Index of current instance, needed for naming
-     * @param  {BacktestInstance} instance 
+     * @param  {BacktestInstance} instance
      * @private
      */
     async exportInstance(number, instance) {
 
-        const instancePath = path.join(this.directory, `run-${ number }`);
+        const instancePath = path.join(this.directory, `run-${number}`);
         await this.createDirectoryIfNotExists(instancePath);
 
         const accountData = await this.exportAccount(instance.accounts.data, instancePath);
@@ -131,18 +208,9 @@ export default class BacktestExporter {
 
         await this.exportInstancePositions(instance.positions, instancePath);
 
-        // Export performance indicator results
-        // Re-format performance results; row 0: all names, row 1: all values
-        const results = [[], []];
-        instance.performanceResults.forEach((result, name) => {
-            results[0].push(name);
-            results[1].push(result);
-        });
-        exportToCsv(path.join(instancePath, 'performance.csv'), results);
-
-        // Export instruments; instance.instruments is an instance of BacktestInstruments; to 
+        // Export instruments; instance.instruments is an instance of BacktestInstruments; to
         // access the instruments, we have to call its instruments property.
-        for (const instrument of instance.instruments.instruments) {
+        for (const [, instrument] of instance.instruments.instruments) {
             await this.exportInstrument(instrument, instancePath, instance.positions);
         }
 
@@ -152,11 +220,11 @@ export default class BacktestExporter {
     /**
      * Export positions for a backtest instance
      * @param  {DataSeries} positions          Positions of an instance
-     * @param  {String} instancePath           Path to store data in      
+     * @param  {String} instancePath           Path to store data in
      */
     async exportInstancePositions(positions, instancePath) {
 
-        // Export positions: They contain objects; just take the size of every instrument instead 
+        // Export positions: They contain objects; just take the size of every instrument instead
         // of the whole object (that would be stringified to [object Object]).
         const cleanPositions = new DataSeries();
         for (const row of positions.data) {
@@ -166,12 +234,13 @@ export default class BacktestExporter {
             // Map through all columns (and not only the columns of a ctertain row) to set size to
             // 0 (instead of undefined/empty) if no position existed
             for (const [columnKey] of positions.columns) {
-                // key is either 'type', 'date' or an instrument; if it's instrument, value is an 
+                // key is either 'type', 'date' or an instrument; if it's instrument, value is an
                 // object with all positions and the final size. Only use this size.
                 if (columnKey instanceof Instrument) {
                     const size = row.has(columnKey) ? row.get(columnKey).size : 0;
                     rowMap.set(columnKey.name, size);
-                } else if (columnKey === 'date') {
+                }
+                else if (columnKey === 'date') {
                     rowMap.set(columnKey, row.get(columnKey));
                 }
                 // Ignore column 'type'
@@ -195,7 +264,7 @@ export default class BacktestExporter {
      * @returns {TransformableDataSeries}   Account data with all acount types added up
      */
     async exportAccount(accountData, instancePath) {
- 
+
         // Transformer that adds up invested and cash, adds column 'total'
         class AccountTotalTransformer {
             next(...data) {
@@ -221,7 +290,7 @@ export default class BacktestExporter {
 
     /**
      * Exports a single instrument's data (that belongs to a certain instance).
-     * @param  {Instrument} instrument 
+     * @param  {Instrument} instrument
      * @param  {string} basePath         Path to export file to; file name is instrument's name.
      * @param {DataSeries} positions     Positions (will be added to instrument in a separate
      *                                   chart)
@@ -232,16 +301,17 @@ export default class BacktestExporter {
         const instrumentPath = path.join(basePath, this.instrumentsSubDirectory);
 
         // Create new ViewableDataSeries for instrument; clone everything and add positions
+        // console.log('instrumentis', instrument);
         const instrumentClone = new Instrument(instrument.name);
         instrumentClone.viewConfig = instrument.viewConfig;
 
         // Adds the position for a certain date to the instrument; using a transformer prevents us
-        // from editing 
+        // from editing
         class PositionTransformer {
             next(date) {
                 // Get correct row of positions to match current date
                 const position = positions.data.find(positionRow => (
-                    positionRow.get('type') === 'close' && 
+                    positionRow.get('type') === 'close' &&
                     positionRow.get('date').getTime() === date.getTime()
                 ));
                 const instrumentPosition = position && position.get(instrument);
@@ -254,7 +324,7 @@ export default class BacktestExporter {
                         title: {
                             text: 'Positions',
                         },
-                    }, 
+                    },
                     series: {
                         name: 'Positions',
                         type: 'area',
@@ -269,8 +339,8 @@ export default class BacktestExporter {
             await instrumentClone.add(new Map(row));
         }
 
-        console.debug('instrument is %o', instrument.viewConfig);
-        console.debug('instrumentClone is %o', instrumentClone.viewConfig);
+        // console.debug('instrument is %o', instrument.viewConfig);
+        // console.debug('instrumentClone is %o', instrumentClone.viewConfig);
 
         await this.createDirectoryIfNotExists(instrumentPath);
 
@@ -282,6 +352,7 @@ export default class BacktestExporter {
 
         // Highstock export
         const chartExporter = new HighChartsExporter();
+        // console.log('instrumentClone', instrument);
         await chartExporter.export(instrumentClone, instrumentPath);
     }
 
@@ -293,13 +364,13 @@ export default class BacktestExporter {
      * @param  {string} path        Path to directory that shall be created
      * @private
      */
-    createDirectoryIfNotExists(path) {
+    createDirectoryIfNotExists(directoryPath) {
         return new Promise((resolve, reject) => {
-            fs.access(path, fs.constants.F_OK, (err) => {
+            fs.access(directoryPath, fs.constants.F_OK, (err) => {
                 // No error thrown, directory exists
                 if (!err) return resolve();
-                debug('Create directory %s', path);
-                fs.mkdir(path, (err) => err ? reject(err) : resolve());
+                debug('Create directory %s', directoryPath);
+                fs.mkdir(directoryPath, mkdirErr => (mkdirErr ? reject(mkdirErr) : resolve()));
             });
         });
     }

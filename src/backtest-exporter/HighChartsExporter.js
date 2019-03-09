@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import logger from '../logger/logger';
 import util from 'util';
+import logger from '../logger/logger';
 
 const { debug } = logger('HighChartsExporter');
 
 /**
- * Quick win: Just export a data structure that highcharts will understand to simplify things. 
- * Code's not nice or tested. 
+ * Quick win: Just export a data structure that highcharts will understand to simplify things.
+ * Code's not nice or tested.
  * TODO: Move to a more abstract/generalized data format
  */
 export default class HighChartsExporter {
@@ -16,7 +16,7 @@ export default class HighChartsExporter {
      * Identifies the main chart; cannot use symbol (won't export correctly, won't work with
      * HighCharts: https://api.highcharts.com/highcharts/series.line.yAxis
      */
-    mainChartIdentifier = 'main-chart'; 
+    mainChartIdentifier = 'main-chart';
 
     /**
      * Contains one entry for every single data series (o, h, l, c, sma, other transformers …)
@@ -24,7 +24,7 @@ export default class HighChartsExporter {
     series = [];
 
     /**
-     * Contains one entry per chart; one chart may contain multiple data series (main contains 
+     * Contains one entry per chart; one chart may contain multiple data series (main contains
      * o, h, l…)
      */
     charts = [];
@@ -43,8 +43,8 @@ export default class HighChartsExporter {
 
 
     /**
-     * Returns sum of all heights of all charts. Is needed to calculate percent based height 
-     * from relations. 
+     * Returns sum of all heights of all charts. Is needed to calculate percent based height
+     * from relations.
      * @returns {Number}
      */
     getTotalChartHeight() {
@@ -87,17 +87,17 @@ export default class HighChartsExporter {
      */
     exportOHLC() {
 
-        const ohlcDataArray = this.dataSeries.data.map((row) => {
+        const ohlcDataArray = this.dataSeries.data.map(row => (
             // Use array (as object doesn't work for > 1000 rows, see
             // https://api.highcharts.com/highstock/series.ohlc.data)
-            return [
+            [
                 row.get('date').getTime(),
                 row.get('open'),
                 row.get('high'),
                 row.get('low'),
                 row.get('close'),
-            ];
-        });
+            ]
+        ));
 
         this.series.push({
             type: 'ohlc',
@@ -122,14 +122,14 @@ export default class HighChartsExporter {
             },
         };
         this.charts.push(mainConfig);
-        // Smart: If we look up a chart with a missing config (=undefined) later, mainChart will 
+        // Smart: If we look up a chart with a missing config (=undefined) later, mainChart will
         // be used.
         this.mappedCharts.set(undefined, mainConfig);
     }
 
 
     /**
-     * Go through all columns (and not the viewConfigs as we might miss some columns that 
+     * Go through all columns (and not the viewConfigs as we might miss some columns that
      * were added *without* a config)
      * @private
      */
@@ -170,10 +170,11 @@ export default class HighChartsExporter {
         // Handle charts first: We need its ID to reference it by series
         // Chart may appear in multiple series configs. Only add it to this.charts once.
         let chart;
-        console.debug('chartConfig is %o', chartConfig);
+        // console.debug('chartConfig is %o', chartConfig);
         if (this.mappedCharts.has(chartConfig)) {
             chart = this.mappedCharts.get(chartConfig);
-        } else {
+        }
+        else {
             const spreadableChartConfig = chartConfig || {};
             chart = {
                 ...spreadableChartConfig,
@@ -183,11 +184,11 @@ export default class HighChartsExporter {
                 id: `${this.chartIdCounter += 1}`,
             };
             this.charts.push(chart);
-            console.debug('push highcharts chart %o', chart);
+            // console.debug('push highcharts chart %o', chart);
             this.mappedCharts.set(chartConfig, chart);
         }
 
-        console.debug('chart is %o', chart);
+        // console.debug('chart is %o', chart);
 
         const highchartsSeries = {
             ...seriesConfig,
@@ -196,7 +197,7 @@ export default class HighChartsExporter {
             name: columnKey,
         };
 
-        console.debug('push highcharts series %o', highchartsSeries);
+        // console.debug('push highcharts series %o', highchartsSeries);
         this.series.push(highchartsSeries);
 
 
@@ -211,9 +212,9 @@ export default class HighChartsExporter {
     createSeriesArrayFromColumn(columnKey) {
         return this.dataSeries.data
             // Remove all empty rows
-            .filter((row) => row.get(columnKey) !== undefined)
+            .filter(row => row.get(columnKey) !== undefined)
             // Object -> Array
-            .map((row) => [row.get('date').getTime(), row.get(columnKey)]);
+            .map(row => [row.get('date').getTime(), row.get(columnKey)]);
     }
 
 
@@ -224,7 +225,7 @@ export default class HighChartsExporter {
      */
     updateHeights() {
         const relativeSpace = 0.1;
-        // Only get totalChartHeight once: afterwards we update chart.height to a string (e.g. 
+        // Only get totalChartHeight once: afterwards we update chart.height to a string (e.g.
         // '50%', adding up won't work any more); add 0.05 for spacing between charts
         const totalHeight = this.getTotalChartHeight() + this.charts.length * relativeSpace;
         // Update heights (from relations to percentages); previous value is used as top position
@@ -249,7 +250,7 @@ export default class HighChartsExporter {
             series: this.series,
             yAxis: this.charts,
         };
-        const filePath = path.join(this.basePath, this.name + '.json');
+        const filePath = path.join(this.basePath, `${this.name}.json`);
         const fileContent = JSON.stringify(highstockData, null, 2);
         debug('Store JSON to', filePath);
         const writeFile = util.promisify(fs.writeFile);

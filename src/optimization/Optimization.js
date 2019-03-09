@@ -5,6 +5,9 @@ const { debug } = logger('WalkForward:Optimization');
 
 export default class Optimization {
 
+	/**
+	 * Holds parameter config: key is the param's name, value its value
+	 */
 	parameterConfigs = new Map();
 
 	/**

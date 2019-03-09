@@ -1,0 +1,8 @@
+{
+    "extends": "@joinbox/joinbox",
+    "parser": "babel-eslint",
+    "rules": {
+        "brace-style": ["error", "stroustrup"],
+        "no-continue": "off",
+    }
+}

@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/data-series/ColumnConfig.mjs"],"names":["ColumnConfig"],"mappings":";;AAAA,eAAe,MAAMA,YAAN,CAAmB;AAAA;AAAA,yCAChB,EADgB;AAAA;;AAAA","sourcesContent":["export default class ColumnConfig {\n    description = '';\n}"],"file":"ColumnConfig.mjs"}

@@ -1,4 +1,5 @@
 # Integration test output
+test
 src/tests/test-data/output
 src/backtest-exporter/test-data/output
 

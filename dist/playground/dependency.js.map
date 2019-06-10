@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/playground/dependency.js"],"names":["Dependency","run"],"mappings":"AAAA,eAAe,MAAMA,UAAN,CAAiB;AAC/BC,EAAAA,GAAG,GAAG;AACL,WAAO,qBAAP;AACA;;AAH8B","sourcesContent":["export default class Dependency {\n\trun() {\n\t\treturn 'original dependency';\n\t}\n}"],"file":"dependency.js"}

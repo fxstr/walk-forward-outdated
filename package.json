@@ -1,12 +1,17 @@
 {
   "name": "walk-forward",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Walk Forward is a JavaScript framework that lets you backtest your trading strategies (stocks, futures, forex, crypto currencies, etc.)",
+  "main": "dist/index.mjs",
   "scripts": {
-    "test": "node node_modules/nyc/bin/nyc node node_modules/ava/cli.js --watch --color --verbose --serial",
-    "coverage": "node node_modules/nyc/bin/nyc node node_modules/ava/cli.js",
-    "backtest": "node node_modules/ava/cli.js --watch --color --verbose src/tests/backtest.integration.js"
+    "test": "npm run buildForTest && npm run buildForTestWatch & npm run testOnly && rm -r ./test",
+    "testOnly": "npx ava --watch --color --verbose --serial",
+    "coverage": "node node_modules/nyc/bin/nyc node node_modules/ava/cli.js --watch --color --verbose --serial",
+    "backtest": "node node_modules/ava/cli.js --watch --color --verbose src/tests/backtest.integration.js",
+    "build": "npx babel src    --out-dir dist --source-maps --keep-file-extension --ignore \"src/**/*.integration.mjs\",\"src/**/*.unit.mjs\"",
+    "buildWatch": "npx babel src -w --out-dir dist --source-maps --keep-file-extension --ignore \"src/**/*.integration.mjs\",\"src/**/*.unit.mjs\"",
+    "buildForTestWatch": "npx babel src --out-dir test --source-maps --keep-file-extension --copy-files",
+    "buildForTest": "npx babel src --out-dir test --source-maps --keep-file-extension --copy-files --watch"
   },
   "repository": {
     "type": "git",
@@ -15,41 +20,42 @@
   "author": "Felix Steiner <f@fxstr.com> (http://fxstr.com)",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^7.1.2",
-    "@babel/plugin-proposal-class-properties": "^7.1.0",
-    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
-    "@babel/plugin-syntax-async-generators": "^7.0.0",
-    "@babel/plugin-transform-modules-commonjs": "^7.1.0",
+    "@ava/babel-preset-transform-test-files": "^4.0.1",
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.3.4",
+    "@babel/plugin-proposal-class-properties": "^7.3.4",
+    "@babel/plugin-proposal-object-rest-spread": "^7.3.4",
+    "@babel/plugin-syntax-async-generators": "^7.2.0",
+    "@babel/plugin-syntax-import-meta": "^7.2.0",
+    "@babel/preset-env": "^7.3.4",
     "@babel/register": "^7.0.0",
     "@joinbox/eslint-config-joinbox": "^1.0.8",
-    "ava": "^1.1.0",
+    "ava": "^1.3.1",
     "babel-eslint": "^10.0.1",
     "debug": "^4.1.1",
     "del": "^3.0.0",
     "dir-compare": "^1.4.0",
-    "nyc": "^13.1.0"
+    "esm": "^3.2.14",
+    "nyc": "^13.3.0"
   },
   "ava": {
     "files": [
-      "**/*.unit.js",
-      "**/*.integration.js"
+      "test/**/*.unit.mjs",
+      "test/**/*.integration.mjs"
     ],
     "require": [
+      "esm",
       "@babel/register"
     ],
-    "failFast": true
-  },
-  "babel": {
-    "plugins": [
-      "@babel/plugin-proposal-class-properties",
-      "@babel/plugin-proposal-object-rest-spread",
-      "@babel/plugin-transform-modules-commonjs",
-      "@babel/plugin-syntax-async-generators"
-    ],
-    "sourceMaps": "inline"
+    "failFast": true,
+    "babel": {
+      "extensions": [
+        "js",
+        "mjs"
+      ]
+    }
   },
   "dependencies": {
-    "@babel/node": "^7.2.2",
     "colors": "^1.2.1",
     "fast-csv": "^2.4.1",
     "glob": "^7.1.2",

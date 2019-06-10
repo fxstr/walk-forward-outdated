@@ -1,0 +1,317 @@
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
+import logger from '../logger/logger.mjs';
+
+const { debug } = logger('HighChartsExporter');
+
+/**
+ * Quick win: Just export a data structure that highcharts will understand to simplify things.
+ * Code's not very nice, tested only through main test.
+ *
+ * A word about configs: A ViewableDataSeries contains a viewConfig that may contain view
+ * information for charts. The following config may be used for charts (also see
+ * getChartConfig.mjs):
+ * {
+ *     // Config for the chart (i.e. a *row* in the whole chart)
+ *     chart: {
+ *         // Use an identifier to share a row across different indicators. Identifier of OHLC
+ *         // is 'main'
+ *         identifier: 'identifierToShareChartsAcrossDifferentIndicators',
+ *         // Use config from HighStock's chart here: https://api.highcharts.com/highstock/chart
+ *         name: 'name'
+ *     }
+ *     series: {
+ *         columnName: {
+ *             // Use series object of HighStock here, see
+ *             // https://api.highcharts.com/highstock/series
+ *             type: 'line'
+ *         }
+ *     }
+ * }
+ */
+export default class HighChartsExporter {
+
+    /**
+     * Identifies the main chart; cannot use symbol (won't export correctly, won't work with
+     * HighCharts: https://api.highcharts.com/highcharts/series.line.yAxis
+     */
+    mainChartIdentifier = 'main-chart';
+
+    /**
+     * Contains one entry for every single data series (o, h, l, c, sma, other transformers …)
+     */
+    series = [];
+
+    /**
+     * Contains one entry per chart; one chart may contain multiple data series (e.g. main contains
+     * o, h, l, c).
+     */
+    charts = new Map();
+
+    /**
+     * Every chart needs an id; count them up
+     */
+    chartIdCounter = 0;
+
+    /**
+     * Charts are modified before they are added to this.charts; one chart may appear in multiple
+     * series configs. Map original chart (from series config) to new map (from this.charts)
+     * Key is original, value is new chart. If new chart exists, chart is not added to this.charts.
+     */
+    // mappedCharts = new Map();
+
+
+    /**
+     * Returns sum of all heights of all charts. Is needed to calculate percent based height
+     * from relations.
+     * @returns {Number}
+     */
+    getTotalChartHeight() {
+        const height = this.charts.reduce((prev, chart) => prev + chart.height, 0);
+        debug('Total chart height is %o from %o', height, this.charts);
+        return height;
+    }
+
+
+    /**
+     * Exports a single instrument/data series to a json file
+     * @param  {[type]} instrument [description]
+     * @return {[type]}            [description]
+     */
+    async export(dataSeries, basePath, name) {
+
+        this.dataSeries = dataSeries;
+        this.basePath = basePath;
+        // dataSeries does not contain a name, but e.g. instrument (extended class) does
+        this.name = name || dataSeries.name;
+
+        debug('Export %s to %s', this.name, basePath);
+
+        this.createMainChart();
+        this.exportOHLC();
+
+        this.createDataForAllColumns();
+
+        this.updateHeights();
+        await this.writeData();
+        debug('Charts are %o', this.charts);
+
+    }
+
+
+
+    /**
+     * Does an export for OHLC, re-formats data, sets chart to 'main'
+     * @private
+     */
+    exportOHLC() {
+
+        const ohlcDataArray = this.dataSeries.data.map(row => (
+            // Use array (as object doesn't work for > 1000 rows, see
+            // https://api.highcharts.com/highstock/series.ohlc.data)
+            [
+                row.get('date').getTime(),
+                row.get('open'),
+                row.get('high'),
+                row.get('low'),
+                row.get('close'),
+            ]
+        ));
+
+        this.series.push({
+            type: 'ohlc',
+            name: this.name,
+            data: ohlcDataArray,
+            yAxis: this.mainChartIdentifier,
+        });
+
+    }
+
+
+    /**
+     * Just sets up the main chart, adds it to this.charts
+     * @private
+     */
+    createMainChart() {
+        const mainConfig = {
+            id: this.mainChartIdentifier,
+            height: 1,
+            title: {
+                text: 'OHLC',
+            },
+        };
+        this.charts.push(mainConfig);
+        // Smart: If we look up a chart with a missing config (=undefined) later, mainChart will
+        // be used.
+        // Update: Don't do this: Non-configured data should get its own chart, may be much too
+        // large/small for OHLC and will mess up data
+        // this.mappedCharts.set(undefined, mainConfig);
+    }
+
+
+    /**
+     * Creates a config for a chart when no config is given on column
+     * @param  {String} chartName   Name of the chart; usually the name of the DataSeries' column
+     * @return {Object}             Default chart config
+     * @private
+     */
+    createDefaultChartConfig(chartName = 'unknown') {
+        return {
+            height: 0.25,
+            // Make sure name is a string
+            name: `${chartName}`,
+        };
+    }
+
+
+    /**
+     * Go through all columns (and not the viewConfigs as we might miss some columns that
+     * were added *without* a config)
+     * @private
+     */
+    createDataForAllColumns() {
+
+        // Those columns were already added to the main chart – ignore them from now on
+        const colsToIgnore = ['open', 'high', 'low', 'close', 'date'];
+
+        for (const [key] of this.dataSeries.columns) {
+            if (colsToIgnore.includes(key)) continue;
+            this.createDataForColumn(key);
+        }
+
+    }
+
+
+    /**
+     * Creates data (this.chart, this.series) for a given column
+     * @param {*} columnKey     Key that was used for the column; usually is a string or Symbol,
+     *                          but may be anything a Map accepts as a key.
+     * @private
+     */
+    createDataForColumn(columnKey) {
+
+        // Get chart config from dataSerie's viewConfig
+        const chartViewConfig = this.dataSeries.viewConfig &&
+            this.dataSeries.viewConfig.chart &&
+            this.dataSeries.viewConfig.chart.get(columnKey);
+
+        let seriesConfig;
+        let chartConfig;
+
+        // There's a chart config for this column
+        if (chartViewConfig) {
+            seriesConfig = chartViewConfig.series;
+            chartConfig = chartViewConfig.chart;
+        }
+
+        // Make sure seriesConfig is spreadable
+        seriesConfig = seriesConfig || {};
+
+        // Handle charts first: We need its ID to reference it by series
+        // Chart may appear in multiple series configs. Only add it to this.charts once.
+        let chart;
+        // console.debug('chartConfig is %o', chartConfig);
+
+        if (this.mappedCharts.has(chartConfig)) {
+            chart = this.mappedCharts.get(chartConfig);
+        }
+
+        else {
+            // Make sure chartConfig can be spread
+            const spreadableChartConfig = chartConfig || {};
+
+            chart = {
+                ...this.createDefaultChartConfig(columnKey),
+                ...spreadableChartConfig,
+                ...{
+                    // Id must be a string; if it's a number, it will be used as an index of the
+                    // charts array! Always overwrite id, use our internal one to prevent clashes.
+                    id: `${this.chartIdCounter += 1}`,
+                },
+            };
+
+            this.charts.push(chart);
+            // Never add undefined to mappedCharts as we want an own chart for all series that do
+            // not have a chartConfig. Adding undefined will use this chartConfig for all charts
+            // without a chartConfig.
+            if (chartConfig !== undefined) {
+                this.mappedCharts.set(chartConfig, chart);
+            }
+
+        }
+
+        // console.debug('chart is %o', chart);
+
+        const highchartsSeries = {
+            ...seriesConfig,
+            // If no chartIdentifier is provided, we explicitly want to add that series to the
+            // main chart.
+            yAxis: chart.id || this.mainChartIdentifier,
+            data: this.createSeriesArrayFromColumn(columnKey),
+            name: columnKey,
+        };
+
+        // console.debug('push highcharts series %o', highchartsSeries);
+        this.series.push(highchartsSeries);
+
+
+    }
+
+
+    /**
+     * Creates an array that can be used as data source for HighStock from c urrent dataSeries
+     * @param  {*} columnKey
+     * @return {Array}           Array with rows; every row has 2 entries (data, value)
+     */
+    createSeriesArrayFromColumn(columnKey) {
+        return this.dataSeries.data
+            // Remove all empty rows
+            .filter(row => row.get(columnKey) !== undefined)
+            // Object -> Array
+            .map(row => [row.get('date').getTime(), row.get(columnKey)]);
+    }
+
+
+    /**
+     * Update heights on all charts: from relative values (1 is highest possible) to percentage
+     * values (based on total height of all charts)
+     * @private
+     */
+    updateHeights() {
+        const relativeSpace = 0.1;
+        // Only get totalChartHeight once: afterwards we update chart.height to a string (e.g.
+        // '50%', adding up won't work any more); add 0.05 for spacing between charts
+        const totalHeight = this.getTotalChartHeight() + this.charts.length * relativeSpace;
+        // Update heights (from relations to percentages); previous value is used as top position
+        // of current chart
+        const percentageBasedSpace = relativeSpace / totalHeight;
+        this.charts.reduce((topPosition, chart) => {
+            const height = chart.height / totalHeight;
+            debug('Height %o of total %o, was %o', chart.height, totalHeight, chart.height);
+            chart.height = Math.floor(height * 100) + '%';
+            chart.top = Math.floor(topPosition * 100 + percentageBasedSpace) + '%';
+            return topPosition + height + percentageBasedSpace;
+        }, 0);
+
+    }
+
+
+    /**
+     * Write data as JSON to file system
+     */
+    async writeData() {
+        const highstockData = {
+            series: this.series,
+            yAxis: this.charts,
+        };
+        const filePath = path.join(this.basePath, `${this.name}.json`);
+        const fileContent = JSON.stringify(highstockData, null, 2);
+        debug('Store JSON to', filePath);
+        const writeFile = util.promisify(fs.writeFile);
+        await writeFile(filePath, fileContent);
+    }
+
+}
+
+
